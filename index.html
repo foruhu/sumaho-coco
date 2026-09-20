@@ -5,56 +5,102 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sumaho-coco</title>
     <style>
-        body {
-            background: #121212;
-            color: #e0e0e0;
-            font-family: sans-serif;
-            margin: 0;
-            padding: 16px;
+        :root {
+            --bg: #121212; --surface: #1e1e1e; --primary: #bb86fc; --accent: #03dac6; --text: #e0e0e0; --danger: #ff5252;
         }
-        h2 { color: #bb86fc; font-size: 1.1rem; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-top: 16px;
-        }
-        button {
-            background: #1e1e1e;
-            color: #fff;
-            border: 1px solid #333;
-            border-radius: 10px;
-            padding: 18px 12px;
-            font-size: 1rem;
-            touch-action: manipulation;
-        }
-        button:active { background: #333; }
-        #toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: #03dac6;
-            color: #000;
-            padding: 12px 24px;
-            border-radius: 25px;
-            font-weight: bold;
-            transition: transform 0.25s ease-out;
-            z-index: 999;
-        }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 14px; }
+        h2 { color: var(--primary); font-size: 1.1rem; margin-top: 0; }
+        .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+        select, input, button { background: var(--surface); color: var(--text); border: 1px solid #333; border-radius: 8px; padding: 8px; font-size: 0.85rem; box-sizing: border-box; }
+        select { flex: 1; }
+        .add-box { display: flex; gap: 6px; margin-bottom: 16px; }
+        .add-box input:nth-child(1) { flex: 0.4; }
+        .add-box input:nth-child(2) { flex: 0.6; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .btn { background: var(--surface); color: var(--text); border: 1px solid #333; border-radius: 10px; padding: 16px 10px; font-size: 0.9rem; text-align: center; touch-action: manipulation; position: relative; word-break: break-all; }
+        .btn:active { background: #333; }
+        .del-btn { position: absolute; top: 4px; right: 6px; font-size: 0.65rem; color: var(--danger); background: none; border: none; padding: 2px 4px; }
+        #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--accent); color: #000; padding: 10px 20px; border-radius: 20px; font-weight: bold; transition: transform 0.25s ease-out; z-index: 999; }
         #toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
-    <h2>📱 Sumaho-coco (稼働確認版)</h2>
-    <div class="grid">
-        <button onclick="copy('1d100<=50 心理学')">心理学 (50)</button>
-        <button onclick="copy('1d100<=70 目星')">目星 (70)</button>
-        <button onclick="copy('1d100<=80 聞き耳')">聞き耳 (80)</button>
-        <button onclick="copy('【宣言】移動します')">移動宣言</button>
+    <h2>📱 Sumaho-coco</h2>
+    
+    <div class="toolbar">
+        <select id="scenarioSelect" onchange="switchScenario()"></select>
+        <button onclick="addScenarioPrompt()">+シナリオ</button>
     </div>
+
+    <div class="add-box">
+        <input type="text" id="labelInput" placeholder="ラベル (例: 目星)">
+        <input type="text" id="textInput" placeholder="送信文 (1d100<=70 目星)">
+        <button onclick="addItem()">追加</button>
+    </div>
+
+    <div class="grid" id="buttonGrid"></div>
     <div id="toast">コピーしました！</div>
+
     <script>
+        let currentScenario = 'common';
+        let data = JSON.parse(localStorage.getItem('sumaho_coco_data')) || {
+            common: [
+                { label: '心理学 (50)', text: '1d100<=50 心理学' },
+                { label: '目星 (70)', text: '1d100<=70 目星' }
+            ]
+        };
+
+        function save() {
+            localStorage.setItem('sumaho_coco_data', JSON.stringify(data));
+        }
+
+        function updateSelect() {
+            const sel = document.getElementById('scenarioSelect');
+            sel.innerHTML = '';
+            Object.keys(data).forEach(key => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = key === 'common' ? '📁 汎用・共通' : `📂 ${key}`;
+                opt.selected = key === currentScenario;
+                sel.appendChild(opt);
+            });
+        }
+
+        function switchScenario() {
+            currentScenario = document.getElementById('scenarioSelect').value;
+            render();
+        }
+
+        function addScenarioPrompt() {
+            const name = prompt('追加するシナリオ名（例: 毒入りスープ）:');
+            if (name && name.trim()) {
+                const cleanName = name.trim();
+                if (!data[cleanName]) data[cleanName] = [];
+                currentScenario = cleanName;
+                save();
+                updateSelect();
+                render();
+            }
+        }
+
+        function addItem() {
+            const label = document.getElementById('labelInput').value.trim();
+            const text = document.getElementById('textInput').value.trim();
+            if (!label || !text) return;
+            if (!data[currentScenario]) data[currentScenario] = [];
+            data[currentScenario].push({ label, text });
+            save();
+            document.getElementById('labelInput').value = '';
+            document.getElementById('textInput').value = '';
+            render();
+        }
+
+        function deleteItem(index) {
+            data[currentScenario].splice(index, 1);
+            save();
+            render();
+        }
+
         function copy(text) {
             navigator.clipboard.writeText(text).then(() => {
                 const t = document.getElementById('toast');
@@ -63,6 +109,26 @@
                 setTimeout(() => t.classList.remove('show'), 1500);
             });
         }
+
+        function render() {
+            const grid = document.getElementById('buttonGrid');
+            grid.innerHTML = '';
+            const items = data[currentScenario] || [];
+            items.forEach((item, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'btn';
+                btn.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
+                btn.onclick = () => copy(item.text);
+                grid.appendChild(btn);
+            });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+        }
+
+        updateSelect();
+        render();
     </script>
 </body>
 </html>
