@@ -1,267 +1,177 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sumaho-coco</title>
-    <style>
-        :root {
-            --bg: #121212; --surface: #1e1e1e; --primary: #bb86fc; --accent: #03dac6; --text: #e0e0e0; --danger: #ff5252;
-        }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 14px; }
-        h2 { color: var(--primary); font-size: 1.1rem; margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
-        .tab-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; }
-        .tab-btn { background: var(--surface); color: var(--text); border: 1px solid #333; border-radius: 8px; padding: 6px 12px; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }
-        .tab-btn.active { background: var(--primary); color: #000; font-weight: bold; border-color: var(--primary); }
-        .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
-        select, input, button { background: var(--surface); color: var(--text); border: 1px solid #333; border-radius: 8px; padding: 8px; font-size: 0.85rem; box-sizing: border-box; }
-        .add-box { display: flex; gap: 6px; margin-bottom: 16px; }
-        .add-box input:nth-child(1) { flex: 0.4; }
-        .add-box input:nth-child(2) { flex: 0.6; }
-        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .btn { background: var(--surface); color: var(--text); border: 1px solid #333; border-radius: 10px; padding: 16px 10px; font-size: 0.9rem; text-align: center; touch-action: manipulation; position: relative; word-break: break-all; }
-        .btn:active { background: #333; }
-        .del-btn { position: absolute; top: 4px; right: 6px; font-size: 0.65rem; color: var(--danger); background: none; border: none; padding: 2px 4px; }
-        #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--accent); color: #000; padding: 10px 20px; border-radius: 20px; font-weight: bold; transition: transform 0.25s ease-out; z-index: 999; }
-        #toast.show { transform: translateX(-50%) translateY(0); }
-    </style>
-</head>
-<body>
-    <h2>📱 Sumaho-coco <button onclick="addTab()" style="font-size:0.75rem; padding:4px 8px;">+タブ追加</button></h2>
-    
-    <div class="tab-bar" id="tabBar"></div>
-
-    <div class="add-box">
-        <input type="text" id="labelInput" placeholder="ラベル (例: 目星)">
-        <input type="text" id="textInput" placeholder="コマンド/台詞 (1d100<=70 目星)">
-        <button onclick="addItem()">追加</button>
-    </div>
-
-    <div class="grid" id="buttonGrid"></div>
-    <div id="toast">コピーしました！</div>
-
-    <script>
-        let data = JSON.parse(localStorage.getItem('sumaho_coco_tabbed')) || {
-            tabs: ['共通', 'PC1', 'KP用'],
-            items: {
-                '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
-                'PC1': [{ label: '目星', text: '1d100<=70 目星' }],
-                'KP用': [{ label: 'シークレット', text: '【KP】シークレットダイス' }]
-            }
-        };
-        let currentTab = data.tabs[0] || '共通';
-
-        function save() {
-            localStorage.setItem('sumaho_coco_tabbed', JSON.stringify(data));
-        }
-
-        function renderTabs() {
-            const bar = document.getElementById('tabBar');
-            bar.innerHTML = '';
-            data.tabs.forEach(tab => {
-                const btn = document.createElement('button');
-                btn.className = `tab-btn ${tab === currentTab ? 'active' : ''}`;
-                btn.textContent = tab;
-                btn.onclick = () => { currentTab = tab; renderTabs(); renderGrid(); };
-                bar.appendChild(btn);
-            });
-        }
-
-        function addTab() {
-            const name = prompt('追加するキャラ名/タブ名（例: PC2, 敵A）:');
-            if (name && name.trim()) {
-                const clean = name.trim();
-                if (!data.tabs.includes(clean)) data.tabs.push(clean);
-                if (!data.items[clean]) data.items[clean] = [];
-                currentTab = clean;
-                save(); renderTabs(); renderGrid();
-            }
-        }
-
-        function addItem() {
-            const label = document.getElementById('labelInput').value.trim();
-            const text = document.getElementById('textInput').value.trim();
-            if (!label || !text) return;
-            if (!data.items[currentTab]) data.items[currentTab] = [];
-            data.items[currentTab].push({ label, text });
-            save();
-            document.getElementById('labelInput').value = '';
-            document.getElementById('textInput').value = '';
-            renderGrid();
-        }
-
-        function deleteItem(idx) {
-            data.items[currentTab].splice(idx, 1);
-            save(); renderGrid();
-        }
-
-        function copy(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                const t = document.getElementById('toast');
-                t.textContent = `コピー: ${text}`;
-                t.classList.add('show');
-                setTimeout(() => t.classList.remove('show'), 1500);
-            });
-        }
-
-        function renderGrid() {
-            const grid = document.getElementById('buttonGrid');
-            grid.innerHTML = '';
-            const items = data.items[currentTab] || [];
-            items.forEach((item, idx) => {
-                const div = document.createElement('div');
-                div.className = 'btn';
-                div.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
-                div.onclick = () => copy(item.text);
-                grid.appendChild(div);
-            });
-        }
-
-        function escapeHTML(str) {
-            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
-        }
-
-        renderTabs();
-        renderGrid();
-        
-        async function sendCurrentTab(state, externalClient) {
-  const currentTab = state.tabs.find(t => t.id === state.activeTabId);
-  if (!currentTab) return;
-
-  // 1. 変数置換・前処理
-  const payloadText = replaceMacros(currentTab.text, state.variables);
-
-  // 2. 外部ツール（ココフォリア等）へのディスパッチ
-  await externalClient.send({
-    channel: currentTab.channel,
-    text: payloadText
-  });
-
-  // 3. 状態更新（送信済みフラグ + 次のタブへカーソル移動）
-  currentTab.sent = true;
-  const currentIndex = state.tabs.findIndex(t => t.id === state.activeTabId);
-  if (currentIndex < state.tabs.length - 1) {
-    state.activeTabId = state.tabs[currentIndex + 1].id;
-  }
-}
-
-    </script>
-</body>
-</html>
-
 import React, { useState } from 'react';
 
 interface ScenarioEntry {
   id: string;
-  tab: 'common' | 'pc1' | 'kp' | 'info' | 'desc';
+  tab: string;
   speaker: string;
   text: string;
 }
 
-// サンプルデータ（各タブに紐づくテキスト群）
-const scenarioData: ScenarioEntry[] = [
-  { id: '1', tab: 'info', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' },
-  { id: '2', tab: 'info', speaker: 'KP', text: '「財団」は、現実ではあり得ないような異常存在を確保・収容する超国家的組織である。' },
-  { id: '3', tab: 'info', speaker: 'KP', text: 'この施設では、いずれも異常存在に分類される 6 種類の生命体と、3 種類の物体を収容している……' },
-  { id: '4', tab: 'pc1', speaker: 'PC1', text: '端末の画面を凝視し、記述された内容に息を呑む。' },
+interface CustomButton {
+  label: string;
+  text: string;
+}
+
+// 初期シナリオデータ（必要に応じて編集・追加可能）
+const initialScenarioData: ScenarioEntry[] = [
+  { id: '1', tab: '情報', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' },
+  { id: '2', tab: '情報', speaker: 'KP', text: '「財団」は、現実ではあり得ないような異常存在を確保・収容する超国家的組織である。' },
+  { id: '3', tab: '情報', speaker: 'KP', text: 'この施設では、いずれも異常存在に分類される 6 種類の生命体と、3 種類の物体を収容している……' },
+  { id: '4', tab: 'PC1', speaker: 'PC1', text: '端末の画面を凝視し、記述された内容に息を呑む。' },
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'common' | 'pc1' | 'kp' | 'info' | 'desc'>('info');
+  const [tabs, setTabs] = useState<string[]>(['共通', 'PC1', 'KP用', '情報', '描写']);
+  const [activeTab, setActiveTab] = useState<string>('情報');
+  const [scenarioItems] = useState<ScenarioEntry[]>(initialScenarioData);
   const [sentIds, setSentIds] = useState<Record<string, boolean>>({});
-  const [copiedText, setCopiedText] = useState<string>('コピー: <<施設情報>>（※探索者が端末から読み取った内容の概要）この施設は……');
-  
-  // 元のカスタムコマンド用ステート
-  const [label, setLabel] = useState('');
-  const [command, setCommand] = useState('');
+  const [copiedText, setCopiedText] = useState<string>('コピー待機中...');
 
-  // ブロッククリックでコピー ＆ チェックON
-  const handleItemClick = async (item: ScenarioEntry) => {
+  // カスタムコマンド用ステート
+  const [label, setLabel] = useState<string>('');
+  const [command, setCommand] = useState<string>('');
+  const [customItems, setCustomItems] = useState<Record<string, CustomButton[]>>({
+    '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
+    'PC1': [{ label: '目星', text: '1d100<=70 目星' }],
+    'KP用': [{ label: 'シークレット', text: '【KP】シークレットダイス' }],
+    '情報': [],
+    '描写': []
+  });
+
+  const handleCopy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedText(`コピー: ${text}`);
+  };
+
+  const handleScenarioClick = async (item: ScenarioEntry) => {
     const payload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
-    await navigator.clipboard.writeText(payload);
-    setCopiedText(`コピー: ${payload}`);
+    await handleCopy(payload);
     setSentIds((prev) => ({ ...prev, [item.id]: true }));
   };
 
-  // チェックボックス手動トグル
   const toggleCheck = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setSentIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const filteredScenario = scenarioData.filter((item) => item.tab === activeTab);
-  const totalCount = filteredScenario.length;
-  const sentCount = filteredScenario.filter((item) => sentIds[item.id]).length;
+  const addCustomItem = () => {
+    if (!label.trim() || !command.trim()) return;
+    setCustomItems((prev) => ({
+      ...prev,
+      [activeTab]: [...(prev[activeTab] || []), { label: label.trim(), text: command.trim() }]
+    }));
+    setLabel('');
+    setCommand('');
+  };
+
+  const deleteCustomItem = (idx: number) => {
+    setCustomItems((prev) => ({
+      ...prev,
+      [activeTab]: (prev[activeTab] || []).filter((_, i) => i !== idx)
+    }));
+  };
+
+  const addTab = () => {
+    const name = window.prompt('追加するタブ名（例: PC2, 敵A）:');
+    if (name && name.trim()) {
+      const clean = name.trim();
+      if (!tabs.includes(clean)) {
+        setTabs((prev) => [...prev, clean]);
+        setCustomItems((prev) => ({ ...prev, [clean]: [] }));
+      }
+      setActiveTab(clean);
+    }
+  };
+
+  const currentButtons = customItems[activeTab] || [];
+  const filteredScenario = scenarioItems.filter((item) => item.tab === activeTab);
+  const totalCount = scenarioItems.length;
+  const sentCount = Object.keys(sentIds).filter((id) => sentIds[id]).length;
 
   return (
     <div className="p-4 space-y-3 max-w-md mx-auto bg-zinc-950 text-zinc-100 min-h-screen text-xs pb-24">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <span className="font-bold text-sm text-purple-400">📱 Sumaho-coco</span>
-        <button className="bg-zinc-800 px-2 py-0.5 rounded text-[10px] text-zinc-300">+タブ追加</button>
+        <button onClick={addTab} className="bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded text-[11px] text-zinc-300">
+          +タブ追加
+        </button>
       </div>
 
-      {/* タブ切り替え */}
+      {/* タブバー */}
       <div className="flex gap-1 overflow-x-auto pb-1">
-        {(['common', 'pc1', 'kp', 'info', 'desc'] as const).map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1 rounded-full text-[11px] font-medium shrink-0 ${
-              activeTab === tab ? 'bg-purple-600 text-white' : 'bg-zinc-800 text-zinc-300'
+            className={`px-3 py-1 rounded-full text-[11px] font-medium shrink-0 transition ${
+              activeTab === tab ? 'bg-purple-600 text-white font-bold' : 'bg-zinc-900 border border-zinc-800 text-zinc-300'
             }`}
           >
-            {tab === 'common' && '共通'}
-            {tab === 'pc1' && 'PC1'}
-            {tab === 'kp' && 'KP用'}
-            {tab === 'info' && '情報'}
-            {tab === 'desc' && '描写'}
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* カスタムコマンド入力欄 */}
+      {/* カスタムコマンド追加ボックス */}
       <div className="flex gap-1.5">
         <input
           type="text"
           placeholder="ラベル (例: 目星)"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+          className="flex-[0.4] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100"
         />
         <input
           type="text"
-          placeholder="コマンド/台詞 (1d100<=70)"
+          placeholder="コマンド/台詞"
           value={command}
           onChange={(e) => setCommand(e.target.value)}
-          className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+          className="flex-[0.6] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100"
         />
-        <button className="bg-zinc-800 border border-zinc-700 px-2.5 rounded text-xs">追加</button>
-      </div>
-
-      {/* 移動宣言 */}
-      <div>
-        <button className="w-full bg-zinc-900 border border-zinc-700 rounded py-1.5 text-center text-zinc-300">
-          移動宣言
+        <button onClick={addCustomItem} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+          追加
         </button>
       </div>
 
+      {/* カスタムコマンドグリッド */}
+      <div className="grid grid-cols-2 gap-2">
+        {currentButtons.map((btn, idx) => (
+          <div
+            key={idx}
+            onClick={() => handleCopy(btn.text)}
+            className="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-lg p-3 text-center cursor-pointer relative break-all active:bg-zinc-800 transition"
+          >
+            <div className="font-medium text-zinc-200">{btn.label}</div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteCustomItem(idx);
+              }}
+              className="absolute top-1.5 right-2 text-[10px] text-red-400 hover:text-red-300"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+
       {/* タブ連動・全件チェックボックス付きシナリオリスト */}
-      <div className="space-y-2 pt-2 border-t border-zinc-800">
+      <div className="space-y-2 pt-3 border-t border-zinc-800">
         <div className="flex justify-between items-center text-[11px] text-zinc-400 px-0.5">
-          <span className="font-semibold">📜 シナリオ・情報一覧（全件表示）</span>
-          <span>{sentCount} / {totalCount} 完了</span>
+          <span className="font-semibold text-zinc-300">📜 シナリオ・情報一覧 ({activeTab})</span>
+          <span>完了: {sentCount} / {totalCount}</span>
         </div>
 
         {filteredScenario.length === 0 ? (
-          <div className="text-zinc-500 py-4 text-center">このタブに登録された文章はありません</div>
+          <div className="text-zinc-500 py-4 text-center">このタブに紐づく文章はありません</div>
         ) : (
           filteredScenario.map((item) => {
             const isSent = !!sentIds[item.id];
             return (
               <div
                 key={item.id}
-                onClick={() => handleItemClick(item)}
+                onClick={() => handleScenarioClick(item)}
                 className={`p-2.5 rounded-lg cursor-pointer transition border flex items-start gap-2.5 ${
                   isSent
                     ? 'bg-zinc-900/40 border-zinc-800 text-zinc-400 opacity-75'
@@ -290,11 +200,10 @@ export default function App() {
         )}
       </div>
 
-      {/* 下部固定のコピープレビューエリア（元の緑色バーを踏襲） */}
-      <div className="fixed bottom-3 left-3 right-3 max-w-md mx-auto bg-teal-950/90 border border-teal-500/60 text-teal-200 p-2 rounded-lg text-xs break-all shadow-xl backdrop-blur-sm">
+      {/* 下部固定のコピープレビューエリア */}
+      <div className="fixed bottom-3 left-3 right-3 max-w-md mx-auto bg-teal-950/95 border border-teal-500/60 text-teal-200 p-2.5 rounded-lg text-xs break-all shadow-xl backdrop-blur-sm z-50">
         {copiedText}
       </div>
     </div>
   );
 }
-
