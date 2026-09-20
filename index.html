@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sumaho-coco セッション支援</title>
+    <style>
+        :root {
+            --bg: #09090b; --surface: #18181b; --primary: #9333ea; --accent: #10b981; --text: #f4f4f5; --text-muted: #a1a1aa; --border: #27272a;
+        }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 12px; font-size: 13px; padding-bottom: 90px; }
+        h2 { color: #c084fc; font-size: 1rem; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .tab-bar { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; }
+        .tab-btn { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
+        .tab-btn.active { background: var(--primary); color: #fff; font-weight: bold; border-color: var(--primary); }
+        .add-box { display: flex; gap: 4px; margin-bottom: 12px; }
+        input, button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; box-sizing: border-box; }
+        .add-box input:nth-child(1) { flex: 0.35; }
+        .add-box input:nth-child(2) { flex: 0.65; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+        .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; font-size: 0.8rem; text-align: center; touch-action: manipulation; position: relative; word-break: break-all; cursor: pointer; }
+        .btn:active { background: #27272a; }
+        .del-btn { position: absolute; top: 2px; right: 4px; font-size: 0.6rem; color: #ef4444; background: none; border: none; padding: 2px 4px; cursor: pointer; }
+        
+        .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+        .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); }
+        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; }
+        .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
+        .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
+        input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
+        
+        #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0d9488; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 0.75rem; font-weight: bold; transition: transform 0.25s ease-out; z-index: 999; max-width: 90%; text-align: center; word-break: break-all; }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+    <h2>📱 Sumaho-coco <button onclick="addTab()" style="font-size:0.7rem; padding:3px 8px;">+タブ追加</button></h2>
+    
+    <div class="tab-bar" id="tabBar"></div>
+
+    <div class="add-box">
+        <input type="text" id="labelInput" placeholder="ラベル (例: 目星)">
+        <input type="text" id="textInput" placeholder="コマンド/台詞 (1d100<=70 目星)">
+        <button onclick="addItem()">追加</button>
+    </div>
+
+    <div class="grid" id="buttonGrid"></div>
+
+    <div class="scenario-section">
+        <div class="scenario-header">
+            <span>📜 タブ別シナリオ・情報</span>
+            <span id="scenarioProgress">0 / 0 完了</span>
+        </div>
+        <div id="scenarioList"></div>
+    </div>
+
+    <div id="toast">コピーしました！</div>
+
+    <script>
+        let data = JSON.parse(localStorage.getItem('sumaho_coco_unified')) || {
+            tabs: ['共通', 'PC1', 'KP用', '情報', '描写'],
+            currentTab: '情報',
+            customItems: {
+                '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
+                'PC1': [{ label: '目星', text: '1d100<=70 目星' }],
+                'KP用': [{ label: 'シークレット', text: '【KP】シークレットダイス' }],
+                '情報': [],
+                '描写': []
+            },
+            scenarios: [
+                { id: 's1', tab: '情報', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' },
+                { id: 's2', tab: '情報', speaker: 'KP', text: '「財団」は、現実ではあり得ないような異常存在を確保・収容する超国家的組織である。' },
+                { id: 's3', tab: '情報', speaker: 'KP', text: 'この施設では、いずれも異常存在に分類される 6 種類の生命体と、3 種類の物体を収容している……' },
+                { id: 's4', tab: 'PC1', speaker: 'PC1', text: '端末の画面を凝視し、記述された内容に息を呑む。' }
+            ],
+            sentIds: {}
+        };
+
+        function save() {
+            localStorage.setItem('sumaho_coco_unified', JSON.stringify(data));
+        }
+
+        function renderTabs() {
+            const bar = document.getElementById('tabBar');
+            bar.innerHTML = '';
+            data.tabs.forEach(tab => {
+                const btn = document.createElement('button');
+                btn.className = `tab-btn ${tab === data.currentTab ? 'active' : ''}`;
+                btn.textContent = tab;
+                btn.onclick = () => { data.currentTab = tab; save(); renderAll(); };
+                bar.appendChild(btn);
+            });
+        }
+
+        function addTab() {
+            const name = prompt('追加するタブ名（例: PC2, 敵A）:');
+            if (name && name.trim()) {
+                const clean = name.trim();
+                if (!data.tabs.includes(clean)) data.tabs.push(clean);
+                if (!data.customItems[clean]) data.customItems[clean] = [];
+                data.currentTab = clean;
+                save(); renderAll();
+            }
+        }
+
+        function addItem() {
+            const label = document.getElementById('labelInput').value.trim();
+            const text = document.getElementById('textInput').value.trim();
+            if (!label || !text) return;
+            if (!data.customItems[data.currentTab]) data.customItems[data.currentTab] = [];
+            data.customItems[data.currentTab].push({ label, text });
+            save();
+            document.getElementById('labelInput').value = '';
+            document.getElementById('textInput').value = '';
+            renderGrid();
+        }
+
+        function deleteItem(idx) {
+            data.customItems[data.currentTab].splice(idx, 1);
+            save(); renderGrid();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = `コピー: ${msg}`;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        function copy(text) {
+            navigator.clipboard.writeText(text).then(() => showToast(text));
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('buttonGrid');
+            grid.innerHTML = '';
+            const items = data.customItems[data.currentTab] || [];
+            items.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'btn';
+                div.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
+                div.onclick = () => copy(item.text);
+                grid.appendChild(div);
+            });
+        }
+
+        function renderScenarios() {
+            const list = document.getElementById('scenarioList');
+            list.innerHTML = '';
+            const filtered = data.scenarios.filter(s => s.tab === data.currentTab);
+            
+            const sentCount = filtered.filter(s => data.sentIds[s.id]).length;
+            document.getElementById('scenarioProgress').textContent = `${sentCount} / ${filtered.length} 完了`;
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:16px;">このタブに登録された文章はありません</div>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const isSent = !!data.sentIds[item.id];
+                const div = document.createElement('div');
+                div.className = `scenario-item ${isSent ? 'sent' : ''}`;
+                div.innerHTML = `
+                    <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
+                    <div style="flex:1; min-width:0;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
+                            <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
+                            ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
+                        </div>
+                        <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
+                    </div>
+                `;
+                div.onclick = (e) => {
+                    if (e.target.tagName === 'INPUT') return;
+                    const payload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
+                    data.sentIds[item.id] = true;
+                    save();
+                    copy(payload);
+                    renderScenarios();
+                };
+                list.appendChild(div);
+            });
+        }
+
+        window.toggleCheck = function(e, id) {
+            e.stopPropagation();
+            if (data.sentIds[id]) {
+                delete data.sentIds[id];
+            } else {
+                data.sentIds[id] = true;
+            }
+            save();
+            renderScenarios();
+        };
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+        }
+
+        function renderAll() {
+            renderTabs();
+            renderGrid();
+            renderScenarios();
+        }
+
+        renderAll();
+    </script>
+</body>
+</html>
