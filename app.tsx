@@ -106,6 +106,66 @@ export default function App() {
     setTimeout(() => setCopiedMessage(''), 2500);
   };
 
+// ココフォリア Clipboard API 形式の簡易型定義 (v1.19.0〜)
+export interface CcfoliaCharacterData {
+  kind: 'character';
+  data: {
+    name: string;
+    memo?: string;
+    initiative?: number;
+    color?: string;
+    commands?: string;
+    [key: string]: any;
+  };
+}
+
+// 景品・キャラクター駒データをクリップボードへ流し込むヘルパー
+export async function copyCcfoliaCharacterJson(name: string, memo: string = '') {
+  const payload: CcfoliaCharacterData = {
+    kind: 'character',
+    data: {
+      name,
+      memo,
+      color: '#4a90e2',
+    }
+  };
+  await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+}
+
+import { copyCcfoliaCharacterJson } from './core/ccfolia-types';
+
+// 例: NPC名クリックや「キャラコマコピー」ボタン等で呼び出し
+const handleExportChar = async (name: string, memo: string) => {
+  await copyCcfoliaCharacterJson(name, memo);
+  alert(`ココフォリア用キャラクター「${name}」をクリップボードにコピーしました！ルーム上でCtrl+Vしてください。`);
+};
+
+interface ScenarioMessage {
+  speaker: string;
+  text: string;
+  isSecret?: boolean; // 秘匿やGMメモ判定
+}
+
+/**
+ * ココフォリアのチャット欄に貼り付けやすい形式へ変換する
+ */
+export function formatChatPayload(item: ScenarioMessage): string {
+  if (item.speaker === 'GM' || item.speaker === 'ナレーション') {
+    return item.text; // 描写はそのまま、または[GM]プレフィックス
+  }
+  return `${item.speaker}「${item.text}」`;
+}
+
+import { formatChatPayload } from './core/chat-formatter';
+
+// ... コンポーネント内等のハンドラー例
+const handleSendToCcfolia = async (entry: { speaker: string; text: string }) => {
+  const payload = formatChatPayload(entry);
+  await navigator.clipboard.writeText(payload);
+  // 必要に応じてUI側の「コピー済み/待機中」ステータスを更新
+};
+
+
   return (
     <div className="p-4 space-y-4 max-w-xl mx-auto bg-zinc-950 text-zinc-100 min-h-screen">
       <div className="flex justify-between items-center">
