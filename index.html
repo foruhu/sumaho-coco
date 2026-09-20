@@ -123,6 +123,28 @@
 
         renderTabs();
         renderGrid();
+        
+        async function sendCurrentTab(state, externalClient) {
+  const currentTab = state.tabs.find(t => t.id === state.activeTabId);
+  if (!currentTab) return;
+
+  // 1. 変数置換・前処理
+  const payloadText = replaceMacros(currentTab.text, state.variables);
+
+  // 2. 外部ツール（ココフォリア等）へのディスパッチ
+  await externalClient.send({
+    channel: currentTab.channel,
+    text: payloadText
+  });
+
+  // 3. 状態更新（送信済みフラグ + 次のタブへカーソル移動）
+  currentTab.sent = true;
+  const currentIndex = state.tabs.findIndex(t => t.id === state.activeTabId);
+  if (currentIndex < state.tabs.length - 1) {
+    state.activeTabId = state.tabs[currentIndex + 1].id;
+  }
+}
+
     </script>
 </body>
 </html>
