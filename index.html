@@ -173,7 +173,12 @@
                 `;
                 div.onclick = (e) => {
                     if (e.target.tagName === 'INPUT') return;
-                    const payload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
+                    
+// 修正後 ([GM] プレフィックスを付与する場合)
+const payload = (item.speaker === 'KP' || item.speaker === 'GM')
+    ? `[GM] ${item.text}` 
+    : `${item.speaker}「${item.text}」`;
+
                     data.sentIds[item.id] = true;
                     save();
                     copy(payload);
