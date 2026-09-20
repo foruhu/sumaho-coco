@@ -9,10 +9,12 @@
             --bg: #121212; --surface: #1e1e1e; --primary: #bb86fc; --accent: #03dac6; --text: #e0e0e0; --danger: #ff5252;
         }
         body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 14px; }
-        h2 { color: var(--primary); font-size: 1.1rem; margin-top: 0; }
+        h2 { color: var(--primary); font-size: 1.1rem; margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
+        .tab-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; }
+        .tab-btn { background: var(--surface); color: var(--text); border: 1px solid #333; border-radius: 8px; padding: 6px 12px; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }
+        .tab-btn.active { background: var(--primary); color: #000; font-weight: bold; border-color: var(--primary); }
         .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
         select, input, button { background: var(--surface); color: var(--text); border: 1px solid #333; border-radius: 8px; padding: 8px; font-size: 0.85rem; box-sizing: border-box; }
-        select { flex: 1; }
         .add-box { display: flex; gap: 6px; margin-bottom: 16px; }
         .add-box input:nth-child(1) { flex: 0.4; }
         .add-box input:nth-child(2) { flex: 0.6; }
@@ -25,16 +27,13 @@
     </style>
 </head>
 <body>
-    <h2>📱 Sumaho-coco</h2>
+    <h2>📱 Sumaho-coco <button onclick="addTab()" style="font-size:0.75rem; padding:4px 8px;">+タブ追加</button></h2>
     
-    <div class="toolbar">
-        <select id="scenarioSelect" onchange="switchScenario()"></select>
-        <button onclick="addScenarioPrompt()">+シナリオ</button>
-    </div>
+    <div class="tab-bar" id="tabBar"></div>
 
     <div class="add-box">
         <input type="text" id="labelInput" placeholder="ラベル (例: 目星)">
-        <input type="text" id="textInput" placeholder="送信文 (1d100<=70 目星)">
+        <input type="text" id="textInput" placeholder="コマンド/台詞 (1d100<=70 目星)">
         <button onclick="addItem()">追加</button>
     </div>
 
@@ -42,44 +41,40 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        let currentScenario = 'common';
-        let data = JSON.parse(localStorage.getItem('sumaho_coco_data')) || {
-            common: [
-                { label: '心理学 (50)', text: '1d100<=50 心理学' },
-                { label: '目星 (70)', text: '1d100<=70 目星' }
-            ]
+        let data = JSON.parse(localStorage.getItem('sumaho_coco_tabbed')) || {
+            tabs: ['共通', 'PC1', 'KP用'],
+            items: {
+                '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
+                'PC1': [{ label: '目星', text: '1d100<=70 目星' }],
+                'KP用': [{ label: 'シークレット', text: '【KP】シークレットダイス' }]
+            }
         };
+        let currentTab = data.tabs[0] || '共通';
 
         function save() {
-            localStorage.setItem('sumaho_coco_data', JSON.stringify(data));
+            localStorage.setItem('sumaho_coco_tabbed', JSON.stringify(data));
         }
 
-        function updateSelect() {
-            const sel = document.getElementById('scenarioSelect');
-            sel.innerHTML = '';
-            Object.keys(data).forEach(key => {
-                const opt = document.createElement('option');
-                opt.value = key;
-                opt.textContent = key === 'common' ? '📁 汎用・共通' : `📂 ${key}`;
-                opt.selected = key === currentScenario;
-                sel.appendChild(opt);
+        function renderTabs() {
+            const bar = document.getElementById('tabBar');
+            bar.innerHTML = '';
+            data.tabs.forEach(tab => {
+                const btn = document.createElement('button');
+                btn.className = `tab-btn ${tab === currentTab ? 'active' : ''}`;
+                btn.textContent = tab;
+                btn.onclick = () => { currentTab = tab; renderTabs(); renderGrid(); };
+                bar.appendChild(btn);
             });
         }
 
-        function switchScenario() {
-            currentScenario = document.getElementById('scenarioSelect').value;
-            render();
-        }
-
-        function addScenarioPrompt() {
-            const name = prompt('追加するシナリオ名（例: 毒入りスープ）:');
+        function addTab() {
+            const name = prompt('追加するキャラ名/タブ名（例: PC2, 敵A）:');
             if (name && name.trim()) {
-                const cleanName = name.trim();
-                if (!data[cleanName]) data[cleanName] = [];
-                currentScenario = cleanName;
-                save();
-                updateSelect();
-                render();
+                const clean = name.trim();
+                if (!data.tabs.includes(clean)) data.tabs.push(clean);
+                if (!data.items[clean]) data.items[clean] = [];
+                currentTab = clean;
+                save(); renderTabs(); renderGrid();
             }
         }
 
@@ -87,18 +82,17 @@
             const label = document.getElementById('labelInput').value.trim();
             const text = document.getElementById('textInput').value.trim();
             if (!label || !text) return;
-            if (!data[currentScenario]) data[currentScenario] = [];
-            data[currentScenario].push({ label, text });
+            if (!data.items[currentTab]) data.items[currentTab] = [];
+            data.items[currentTab].push({ label, text });
             save();
             document.getElementById('labelInput').value = '';
             document.getElementById('textInput').value = '';
-            render();
+            renderGrid();
         }
 
-        function deleteItem(index) {
-            data[currentScenario].splice(index, 1);
-            save();
-            render();
+        function deleteItem(idx) {
+            data.items[currentTab].splice(idx, 1);
+            save(); renderGrid();
         }
 
         function copy(text) {
@@ -110,16 +104,16 @@
             });
         }
 
-        function render() {
+        function renderGrid() {
             const grid = document.getElementById('buttonGrid');
             grid.innerHTML = '';
-            const items = data[currentScenario] || [];
+            const items = data.items[currentTab] || [];
             items.forEach((item, idx) => {
-                const btn = document.createElement('div');
-                btn.className = 'btn';
-                btn.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
-                btn.onclick = () => copy(item.text);
-                grid.appendChild(btn);
+                const div = document.createElement('div');
+                div.className = 'btn';
+                div.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
+                div.onclick = () => copy(item.text);
+                grid.appendChild(div);
             });
         }
 
@@ -127,8 +121,8 @@
             return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
         }
 
-        updateSelect();
-        render();
+        renderTabs();
+        renderGrid();
     </script>
 </body>
 </html>
