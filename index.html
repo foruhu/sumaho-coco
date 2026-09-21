@@ -6,8 +6,30 @@
     <title>Sumaho-coco セッション支援</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <link rel="stylesheet" href="./style.css">
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --surface: #18181b;
+            --border: #27272a;
+            --text: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --primary: #9333ea;
+        }
+        body {
+            background-color: var(--bg) !important;
+            color: var(--text) !important;
+            margin: 0;
+            padding: 10px;
+        }
+        .import-section, .scenario-section, .scenario-selector, .scenario-item {
+            background-color: var(--surface) !important;
+            border-color: var(--border) !important;
+            color: var(--text) !important;
+        }
+    </style>
+    <!-- <link rel="stylesheet" href="./style.css"> -->
 </head>
+
 <body>
     <div class="scenario-selector">
         <span style="font-weight:bold; color:#c084fc;">📁 シナリオ:</span>
