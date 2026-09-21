@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sumaho-coco 完全版（目次縦書き・改行・折り畳み・スクロール対応）</title>
+    <title>Sumaho-coco 完全版（目次タイトル編集対応）</title>
     <!-- Mammoth & PDF.js for import -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -149,6 +149,17 @@
             justify-content: center;
             letter-spacing: -2px;
         }
+        .scenario-action-btn:hover { background: var(--surface); }
+        .index-edit-tag {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.55rem;
+            padding: 2px 2px;
+            cursor: pointer;
+            writing-mode: vertical-rl;
+        }
+        .index-edit-tag:hover { color: var(--primary); }
         .scenario-del-btn {
             background: none;
             border: none;
@@ -246,7 +257,7 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v16';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v17';
         let editingScenarioId = null;
         let collapsedSentIds = {};
 
@@ -576,7 +587,21 @@
             pushHistory();
             item.isIndex = true;
             item.indexTitle = item.text.trim().slice(0, 10);
-            save(); renderScenarios(); showToast('目次化');
+            save(); renderScenarios(); showToast('目次化しました');
+        };
+
+        window.editIndexTitle = function(id) {
+            const cur = getCur();
+            const item = cur.scenariosList.find(s => s.id === id);
+            if (!item) return;
+            const currentTitle = item.indexTitle || item.text.trim().slice(0, 10);
+            const newTitle = prompt('目次タイトルを入力:', currentTitle);
+            if (newTitle !== null) {
+                pushHistory();
+                item.isIndex = true;
+                item.indexTitle = newTitle.trim() || currentTitle;
+                save(); renderScenarios(); showToast('目次タイトルを更新');
+            }
         };
 
         window.removeIndexStatus = function(headerId) {
@@ -598,7 +623,9 @@
                 pushHistory();
                 item.speaker = speakerInput.value.trim() || 'KP';
                 item.text = textInput.value;
-                if (item.indexTitle) item.indexTitle = item.text.trim().slice(0, 10);
+                if (item.indexTitle && !item.indexCustomEdited) {
+                    item.indexTitle = item.text.trim().slice(0, 10);
+                }
                 save(); showToast('保存');
             }
             editingScenarioId = null; renderScenarios();
@@ -718,15 +745,25 @@
                 const btn = document.createElement('button');
                 btn.className = 'scenario-action-btn';
                 btn.textContent = titleText.slice(0, 6);
+                btn.title = `クリックでスクロール / 長押しまたは「✎」で編集 (${titleText})`;
                 btn.onclick = () => {
                     const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 };
+                const editIndexBtn = document.createElement('button');
+                editIndexBtn.className = 'index-edit-tag';
+                editIndexBtn.textContent = '✎';
+                editIndexBtn.title = '目次タイトルを編集';
+                editIndexBtn.onclick = (e) => { e.stopPropagation(); editIndexTitle(item.id); };
                 const delIndexBtn = document.createElement('button');
                 delIndexBtn.className = 'scenario-del-btn';
                 delIndexBtn.textContent = '✕';
+                delIndexBtn.title = '目次から除外';
                 delIndexBtn.onclick = (e) => { e.stopPropagation(); removeIndexStatus(item.id); };
-                group.appendChild(btn); group.appendChild(delIndexBtn); indexBar.appendChild(group);
+                group.appendChild(btn);
+                group.appendChild(editIndexBtn);
+                group.appendChild(delIndexBtn);
+                indexBar.appendChild(group);
             });
         }
 
@@ -751,7 +788,7 @@
             }
 
             filteredScenarios.forEach(item => {
-                const isSent = !!cur.sentIds[item.id];
+                const isSent = !cur.sentIds[item.id] ? false : true;
                 const isCollapsed = isSent && !!collapsedSentIds[item.id];
                 const isEditing = editingScenarioId === item.id;
                 const div = document.createElement('div');
@@ -786,6 +823,7 @@
                             <div class="actions-row">
                                 <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)">${tabOptionsHTML}</select>
                                 <button class="scenario-action-btn" style="writing-mode: horizontal-tb;" onclick="event.stopPropagation(); makeItemIndexByFirstChar('${item.id}')">📌目次</button>
+                                ${item.isIndex || item.indexTitle ? `<button class="scenario-action-btn" style="writing-mode: horizontal-tb;" onclick="event.stopPropagation(); editIndexTitle('${item.id}')">✎目次名</button>` : ''}
                                 <button class="scenario-action-btn" style="writing-mode: horizontal-tb;" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')">+挿入</button>
                                 <button class="scenario-action-btn" style="writing-mode: horizontal-tb;" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)">⬆️</button>
                                 <button class="scenario-action-btn" style="writing-mode: horizontal-tb;" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)">⬇️</button>
