@@ -38,14 +38,22 @@
         .scenario-search-box { width: 100%; margin-bottom: 8px; }
         .scenario-search-box input { width: 100%; font-size: 0.75rem; }
         
-        /* 左右分割レイアウトのコンテナ */
+        /* 左右分割コンテナ（左リスト、右目次バー） */
         .scenario-body-container {
             display: flex;
             gap: 8px;
             align-items: flex-start;
         }
 
-        /* 左側目次バー（縦積み） */
+        #scenarioList {
+            flex: 1;
+            min-width: 0;
+            max-height: 48vh;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        /* 右側目次バー（縦積み）オイル＆スリム化 */
         #scenarioIndexBar {
             display: flex;
             flex-direction: column;
@@ -54,7 +62,7 @@
             flex-shrink: 0;
             max-height: 48vh;
             overflow-y: auto;
-            padding-right: 2px;
+            padding-left: 2px;
         }
         #scenarioIndexBar::-webkit-scrollbar { width: 3px; }
         #scenarioIndexBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -65,14 +73,6 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             padding: 4px 6px;
-        }
-
-        #scenarioList {
-            flex: 1;
-            min-width: 0;
-            max-height: 48vh;
-            overflow-y: auto;
-            padding-right: 4px;
         }
 
         .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
@@ -160,10 +160,10 @@
         <div class="scenario-search-box">
             <input type="text" id="scenarioSearchInput" placeholder="🔍 話者・本文で検索..." oninput="renderScenarios()">
         </div>
-        <!-- 左右分割コンテナ：左に目次バー、右にリスト -->
+        <!-- 左右分割コンテナ：左にリスト、右に縦積み目次バー -->
         <div class="scenario-body-container">
-            <div id="scenarioIndexBar"></div>
             <div id="scenarioList"></div>
+            <div id="scenarioIndexBar"></div>
         </div>
     </div>
 
@@ -750,7 +750,7 @@
             const searchInput = document.getElementById('scenarioSearchInput');
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-            // 左側目次バー描画
+            // 右側目次バー描画
             renderScenarioIndex(allScenarios);
 
             // フィルタ適用
