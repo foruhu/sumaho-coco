@@ -552,6 +552,7 @@ function renderScenarioIndex(originalList) {
     });
 }
 
+
 function renderScenarios() {
     const cur = getCur();
     const list = document.getElementById('scenarioList');
