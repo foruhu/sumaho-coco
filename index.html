@@ -82,7 +82,10 @@
     <div class="scenario-section">
         <div class="scenario-header">
             <span>📜 タブ別シナリオ・情報</span>
-            <span id="scenarioProgress">0 / 0 完了</span>
+            <span>
+                <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
+                <button onclick="clearCurrentTabScenarios()" style="font-size:0.65ns; font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">このタブを全クリア</button>
+            </span>
         </div>
         <div id="scenarioList"></div>
     </div>
@@ -102,7 +105,7 @@
                     customItems: {
                         '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
                         'PC1': [{ label: '目星', text: '1d100<=70 目星' }],
-                        'KP用': [{ label: 'シークレット', text: '【KP>シークレットダイス' }],
+                        'KP用': [{ label: 'シークレット', text: '【KP】シークレットダイス' }],
                         '情報': [],
                         '描写': []
                     },
@@ -150,12 +153,22 @@
             }
         }
 
-        // PDF.js worker setup
+        function clearCurrentTabScenarios() {
+            const cur = getCur();
+            if (confirm(`「${cur.currentTab}」タブの登録シナリオをすべて削除しますか？`)) {
+                const targetIds = cur.scenariosList.filter(s => s.tab === cur.currentTab).map(s => s.id);
+                cur.scenariosList = cur.scenariosList.filter(s => s.tab !== cur.currentTab);
+                targetIds.forEach(id => delete cur.sentIds[id]);
+                save();
+                renderScenarios();
+                showToast('タブ内のシナリオをクリアしました');
+            }
+        }
+
         if (typeof pdfjsLib !== 'undefined') {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
 
-        // ファイル読込イベント (TXT / DOCX / PDF対応)
         document.getElementById('fileInput').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -207,7 +220,7 @@
                 const bracketMatch = line.match(/^【(.*?)】\s*(.*)$/);
 
                 if (colonMatch) {
-                    speaker = colonMatch.toUpperCase ? colonMatch[1].toUpperCase() : 'KP';
+                    speaker = colonMatch[1] ? colonMatch[1].toUpperCase() : 'KP';
                     text = colonMatch[2] || line.trim();
                 } else if (bracketMatch) {
                     speaker = bracketMatch[1] || 'KP';
