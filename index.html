@@ -171,7 +171,6 @@
     <script>
         const STORAGE_KEY = 'sumaho_coco_multiscenario_v16';
         let editingScenarioId = null;
-        let activeIndexId = null;
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -246,7 +245,6 @@
                         if (confirm('現在のデータを上書きしてJSONを復元しますか？')) {
                             allData = parsed;
                             editingScenarioId = null;
-                            activeIndexId = null;
                             save();
                             renderAll();
                             showToast('JSONデータを復元しました');
@@ -266,7 +264,6 @@
             if (confirm('データを初期化してサンプルに戻しますか？')) {
                 localStorage.removeItem(STORAGE_KEY);
                 allData = JSON.parse(JSON.stringify(defaultData));
-                activeIndexId = null;
                 renderAll();
                 showToast('初期化しました');
             }
@@ -278,7 +275,6 @@
                 cur.scenariosList = [];
                 cur.sentIds = {};
                 editingScenarioId = null;
-                activeIndexId = null;
                 save();
                 renderScenarios();
                 showToast('シナリオをクリアしました');
@@ -377,7 +373,6 @@
 
             document.getElementById('importPreview').value = '';
             document.getElementById('fileInput').value = '';
-            activeIndexId = null;
             save();
             renderScenarios();
             showToast('テキスト登録完了！');
@@ -398,7 +393,6 @@
         function switchScenario(key) {
             allData.currentScenario = key;
             editingScenarioId = null;
-            activeIndexId = null;
             save();
             renderAll();
         }
@@ -420,7 +414,6 @@
                 };
                 allData.currentScenario = key;
                 editingScenarioId = null;
-                activeIndexId = null;
                 save();
                 renderAll();
             }
@@ -557,7 +550,6 @@
             showToast('途中に挿入しました');
         };
 
-        // テキストを変更せず、先頭数文字を目次タイトルとして内部保持する機能
         window.makeItemIndexByFirstChar = function(id) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
@@ -601,7 +593,6 @@
             removedIds.forEach(id => delete cur.sentIds[id]);
 
             cur.scenariosList.splice(startIdx, deleteCount);
-            if (activeIndexId === headerId) activeIndexId = null;
             save();
             renderScenarios();
             showToast('目次ブロックを削除しました');
@@ -751,13 +742,13 @@
 
             const allBtn = document.createElement('button');
             allBtn.className = 'scenario-action-btn scenario-index-btn';
-            allBtn.textContent = '全表示';
-            allBtn.style.background = activeIndexId === null ? 'var(--primary)' : 'var(--bg)';
-            allBtn.style.color = activeIndexId === null ? '#fff' : 'var(--text-muted)';
+            allBtn.textContent = 'TOPへ';
+            allBtn.style.background = 'var(--bg)';
+            allBtn.style.color = 'var(--text-muted)';
             allBtn.style.width = '100%';
             allBtn.onclick = () => {
-                activeIndexId = null;
-                renderScenarios();
+                const listEl = document.getElementById('scenarioList');
+                if (listEl) listEl.scrollTo({ top: 0, behavior: 'smooth' });
             };
             indexBar.appendChild(allBtn);
 
@@ -770,20 +761,13 @@
                 btn.className = 'scenario-action-btn scenario-index-btn';
                 btn.textContent = titleText.slice(0, 6);
                 btn.title = titleText;
-                const isSelected = activeIndexId === item.id;
-                btn.style.background = isSelected ? 'var(--primary)' : 'var(--bg)';
-                btn.style.color = isSelected ? '#fff' : 'var(--text-muted)';
                 
                 btn.onclick = () => {
-                    if (activeIndexId === item.id) {
-                        activeIndexId = null;
-                    } else {
-                        activeIndexId = item.id;
-                    }
-                    renderScenarios();
-                    if (activeIndexId) {
-                        const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        el.style.borderColor = 'var(--primary)';
+                        setTimeout(() => { el.style.borderColor = ''; }, 1500);
                     }
                 };
 
@@ -817,22 +801,6 @@
             renderScenarioIndex(allScenarios);
 
             let filteredScenarios = allScenarios;
-
-            if (activeIndexId) {
-                const startIdx = allScenarios.findIndex(s => s.id === activeIndexId);
-                if (startIdx !== -1) {
-                    const sliced = [];
-                    for (let i = startIdx; i < allScenarios.length; i++) {
-                        const s = allScenarios[i];
-                        const isHeading = i > startIdx && (s.isIndex || s.indexTitle);
-                        if (isHeading) break;
-                        sliced.push(s);
-                    }
-                    filteredScenarios = sliced;
-                } else {
-                    activeIndexId = null;
-                }
-            }
 
             if (query) {
                 filteredScenarios = filteredScenarios.filter(item => {
