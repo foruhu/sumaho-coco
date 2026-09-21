@@ -15,9 +15,16 @@
         .scenario-selector { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; background: var(--surface); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
         .scenario-selector select { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px; font-size: 0.8rem; }
         h2 { color: #c084fc; font-size: 1rem; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
-        .tab-bar { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; }
-        .tab-btn { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
-        .tab-btn.active { background: var(--primary); color: #fff; font-weight: bold; border-color: var(--primary); }
+        
+        .tab-bar { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; align-items: center; }
+        .tab-item { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+        .tab-btn { background: none; color: var(--text-muted); border: none; padding: 5px 8px; font-size: 0.75rem; white-space: nowrap; cursor: pointer; }
+        .tab-item.active { background: var(--primary); border-color: var(--primary); }
+        .tab-item.active .tab-btn { color: #fff; font-weight: bold; }
+        .tab-edit-mini { background: none; border: none; color: var(--text-muted); font-size: 0.65rem; padding: 4px 6px; cursor: pointer; border-left: 1px solid var(--border); }
+        .tab-item.active .tab-edit-mini { color: rgba(255,255,255,0.8); border-left-color: rgba(255,255,255,0.2); }
+        .tab-edit-mini:hover { color: #ef4444; }
+
         .add-box { display: flex; gap: 4px; margin-bottom: 12px; }
         input, button, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; box-sizing: border-box; }
         .add-box input:nth-child(1) { flex: 0.35; }
@@ -84,7 +91,7 @@
             <span>📜 タブ別シナリオ・情報</span>
             <span>
                 <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
-                <button onclick="clearCurrentTabScenarios()" style="font-size:0.65ns; font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">このタブを全クリア</button>
+                <button onclick="clearCurrentTabScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">このタブを全クリア</button>
             </span>
         </div>
         <div id="scenarioList"></div>
@@ -93,7 +100,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v2';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v3';
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -119,7 +126,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v2') || localStorage.getItem('sumaho_coco_multiscenario');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -146,7 +153,6 @@
         function resetAllData() {
             if (confirm('データを初期化してサンプルに戻しますか？')) {
                 localStorage.removeItem(STORAGE_KEY);
-                localStorage.removeItem('sumaho_coco_multiscenario');
                 allData = JSON.parse(JSON.stringify(defaultData));
                 renderAll();
                 showToast('初期化しました');
@@ -165,6 +171,7 @@
             }
         }
 
+        // PDF.js worker setup
         if (typeof pdfjsLib !== 'undefined') {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
@@ -281,16 +288,32 @@
             }
         }
 
+        // タブ描画（リネーム・削除ボタン付き）
         function renderTabs() {
             const cur = getCur();
             const bar = document.getElementById('tabBar');
             bar.innerHTML = '';
             cur.tabs.forEach(tab => {
+                const item = document.createElement('div');
+                item.className = `tab-item ${tab === cur.currentTab ? 'active' : ''}`;
+                
                 const btn = document.createElement('button');
-                btn.className = `tab-btn ${tab === cur.currentTab ? 'active' : ''}`;
+                btn.className = 'tab-btn';
                 btn.textContent = tab;
                 btn.onclick = () => { cur.currentTab = tab; save(); renderAll(); };
-                bar.appendChild(btn);
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'tab-edit-mini';
+                editBtn.innerHTML = '✏️';
+                editBtn.title = 'タブ名変更・削除';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    editTab(tab);
+                };
+
+                item.appendChild(btn);
+                item.appendChild(editBtn);
+                bar.appendChild(item);
             });
         }
 
@@ -303,6 +326,62 @@
                 if (!cur.customItems[clean]) cur.customItems[clean] = [];
                 cur.currentTab = clean;
                 save(); renderAll();
+            }
+        }
+
+        // タブのリネーム＆削除モーダル代替（prompt）
+        function editTab(oldName) {
+            const cur = getCur();
+            const action = prompt(`タブ「${oldName}」の操作:\n・名前を変更する場合は新しい名前を入力\n・「DEL」または空欄で削除（※中身も消えます）`, oldName);
+            
+            if (action === null) return; // キャンセル
+            
+            const newName = action.trim();
+            if (newName === '' || newName.toLowerCase() === 'del') {
+                // 削除処理
+                if (cur.tabs.length <= 1) {
+                    alert('最後のタブは削除できません');
+                    return;
+                }
+                if (!confirm(`タブ「${oldName}」および、そこに紐づくカスタムボタン・シナリオをすべて削除しますか？`)) return;
+
+                cur.tabs = cur.tabs.filter(t => t !== oldName);
+                delete cur.customItems[oldName];
+                // 紐づくシナリオも削除
+                const targetIds = cur.scenariosList.filter(s => s.tab === oldName).map(s => s.id);
+                cur.scenariosList = cur.scenariosList.filter(s => s.tab !== oldName);
+                targetIds.forEach(id => delete cur.sentIds[id]);
+
+                if (cur.currentTab === oldName) {
+                    cur.currentTab = cur.tabs[0];
+                }
+                save();
+                renderAll();
+                showToast(`タブ「${oldName}」を削除しました`);
+                return;
+            }
+
+            if (newName !== oldName) {
+                if (cur.tabs.includes(newName)) {
+                    alert('同名のタブが既に存在します');
+                    return;
+                }
+                // リネーム実行
+                const idx = cur.tabs.indexOf(oldName);
+                if (idx !== -1) cur.tabs[idx] = newName;
+                if (cur.customItems[oldName]) {
+                    cur.customItems[newName] = cur.customItems[oldName];
+                    delete cur.customItems[oldName];
+                }
+                cur.scenariosList.forEach(s => {
+                    if (s.tab === oldName) s.tab = newName;
+                });
+                if (cur.currentTab === oldName) {
+                    cur.currentTab = newName;
+                }
+                save();
+                renderAll();
+                showToast(`タブ名を「${newName}」に変更しました`);
             }
         }
 
