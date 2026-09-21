@@ -479,6 +479,29 @@
             showToast(`タブを「${newTab}」に変更`);
         };
 
+        window.insertScenarioItemAfter = function(id) {
+            const cur = getCur();
+            const idx = cur.scenariosList.findIndex(s => s.id === id);
+            if (idx === -1) return;
+            const currentItem = cur.scenariosList[idx];
+            
+            const speaker = prompt('挿入する話者:', currentItem.speaker || 'KP');
+            if (speaker === null) return;
+            const text = prompt('挿入する本文:');
+            if (text === null || !text.trim()) return;
+            
+            const newItem = {
+                id: 'ins_' + Date.now(),
+                tab: currentItem.tab,
+                speaker: speaker.trim() || 'KP',
+                text: text
+            };
+            cur.scenariosList.splice(idx + 1, 0, newItem);
+            save();
+            renderScenarios();
+            showToast('途中に挿入しました');
+        };
+
         window.editScenarioItem = function(id) {
             editingScenarioId = id;
             renderScenarios();
@@ -666,6 +689,7 @@
                             <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
                                 ${tabOptionsHTML}
                             </select>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')" title="この下に追加">+挿入</button>
                             <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
                             <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
                             <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
@@ -674,7 +698,7 @@
                             <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
                         </div>
                         <div style="flex:1; min-width:0;">
-                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 250px;">
                                 <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
                                 ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                             </div>
