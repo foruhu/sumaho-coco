@@ -495,27 +495,32 @@ function renderScenarioIndex(originalList) {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
-        // 鉛筆と×を1つにした統合ボタン（クリックで操作選択）
+        // 鉛筆と×を1つにした統合ボタン（クリックで専用ポップアップメニュー表示）
         const unifiedBtn = document.createElement('button');
         unifiedBtn.className = 'index-unified-btn';
         unifiedBtn.textContent = '⚙';
         unifiedBtn.title = '目次操作（編集・解除）';
         unifiedBtn.onclick = (e) => {
             e.stopPropagation();
-            const choice = prompt(`目次「${titleText}」の操作:\n1 or 空白: 目次名義を編集\ndel: 目次ピン留めを解除`, '1');
-            if (choice === null) return;
-            if (choice.trim().toLowerCase() === 'del' || choice.trim() === '×') {
-                removeIndexStatus(item.id);
-            } else {
-                editIndexTitle(item.id);
-            }
+            closeIndexPopover();
+            const rect = e.target.getBoundingClientRect();
+            const popover = document.createElement('div');
+            popover.id = 'indexPopoverMenu';
+            popover.className = 'index-popover-menu';
+            
+            // 画面外にはみ出さないよう調整
+            const topPos = Math.min(rect.bottom, window.innerHeight - 90);
+            const leftPos = Math.max(10, rect.left - 50);
+            popover.style.top = `${topPos}px`;
+            popover.style.left = `${leftPos}px`;
+
+            popover.innerHTML = `
+                <button onclick="closeIndexPopover(); editIndexTitle('${item.id}')">✏️ 編集</button>
+                <button onclick="closeIndexPopover(); removeIndexStatus('${item.id}')" style="color:var(--accent-red);">✕ 解除</button>
+            `;
+            document.body.appendChild(popover);
         };
 
-        group.appendChild(btn);
-        group.appendChild(unifiedBtn);
-        indexBar.appendChild(group);
-    });
-}
 
 function renderScenarios() {
     const cur = getCur();
