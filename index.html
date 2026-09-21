@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sumaho-coco 完全版</title>
+    <title>Sumaho-coco 完全版（送信済み折り畳み対応）</title>
     <!-- Mammoth & PDF.js for import -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -113,8 +113,8 @@
         .scenario-action-btn { background: none; border: none; color: var(--text); padding: 3px 5px; font-size: 0.6rem; cursor: pointer; }
         .scenario-del-btn { background: none; border: none; color: #ef4444; padding: 3px 4px; font-size: 0.6rem; cursor: pointer; }
         .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .search-area { padding: 6px; display: flex; gap: 4px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: center; font-size: 0.7rem; }
-        .search-area input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; }
+        .search-area { padding: 6px; display: flex; gap: 4px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: center; font-size: 0.7rem; flex-wrap: wrap; }
+        .search-area input { flex: 1; min-width: 80px; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; }
         .scenario-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
         .scenario-item {
             background: var(--surface);
@@ -126,8 +126,12 @@
             gap: 4px;
             font-size: 0.75rem;
         }
-        .scenario-item.sent { opacity: 0.6; }
+        .scenario-item.sent { opacity: 0.75; }
         .scenario-item.editing { border-color: var(--primary); }
+        .scenario-item.collapsed .scenario-body,
+        .scenario-item.collapsed .scenario-actions-top {
+            display: none;
+        }
         .scenario-actions-top { display: flex; flex-direction: column; gap: 2px; border-top: 1px dashed var(--border); padding-top: 4px; margin-top: 2px; }
         .actions-row { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
         .item-tab-select { background: var(--bg); color: var(--text); border: 1px solid var(--border); font-size: 0.6rem; padding: 2px; border-radius: 3px; }
@@ -177,6 +181,7 @@
             <div class="search-area">
                 <input type="text" id="scenarioSearchInput" placeholder="検索..." oninput="renderScenarios()">
                 <span id="scenarioProgress" style="white-space:nowrap;">0/0完了</span>
+                <button onclick="toggleAllSentCollapse()" id="collapseAllBtn" title="送信済みの全体折り畳み/展開">全折り畳み切替</button>
                 <button onclick="resetAllChecks()">解除</button>
                 <button onclick="deleteCheckedScenarios()" style="color:#ef4444;">選択消去</button>
             </div>
@@ -197,6 +202,7 @@
     <script>
         const STORAGE_KEY = 'sumaho_coco_multiscenario_v16';
         let editingScenarioId = null;
+        let collapsedSentIds = {}; // 送信済み折り畳み管理用IDマップ
 
         let historyStack = [];
         function pushHistory() {
@@ -314,7 +320,10 @@
             pushHistory();
             const removeSet = new Set(checkedIds);
             cur.scenariosList = cur.scenariosList.filter(s => !removeSet.has(s.id));
-            checkedIds.forEach(id => delete cur.sentIds[id]);
+            checkedIds.forEach(id => {
+                delete cur.sentIds[id];
+                delete collapsedSentIds[id];
+            });
             if (editingScenarioId && removeSet.has(editingScenarioId)) editingScenarioId = null;
             save(); renderScenarios(); showToast(`${checkedIds.length} 件削除`);
         }
@@ -325,6 +334,7 @@
             if (confirm('すべてのチェックを解除しますか？')) {
                 pushHistory();
                 cur.sentIds = {};
+                collapsedSentIds = {};
                 save(); renderScenarios(); showToast('全解除完了');
             }
         }
@@ -520,7 +530,7 @@
             pushHistory();
             item.isIndex = true;
             item.indexTitle = item.text.trim().slice(0, 10);
-            save(); renderScenarios(); showToast('目子化');
+            save(); renderScenarios(); showToast('目次化');
         };
 
         window.removeIndexStatus = function(headerId) {
@@ -559,6 +569,7 @@
             currentItem.text = currentItem.text + '\n' + nextItem.text;
             cur.scenariosList.splice(idx + 1, 1);
             delete cur.sentIds[nextItem.id];
+            delete collapsedSentIds[nextItem.id];
             save(); renderScenarios();
         };
 
@@ -593,8 +604,26 @@
             const cur = getCur();
             cur.scenariosList = cur.scenariosList.filter(s => s.id !== id);
             delete cur.sentIds[id];
+            delete collapsedSentIds[id];
             if (editingScenarioId === id) editingScenarioId = null;
             save(); renderScenarios();
+        };
+
+        window.toggleCollapseSent = function(e, id) {
+            e.stopPropagation();
+            collapsedSentIds[id] = !collapsedSentIds[id];
+            renderScenarios();
+        };
+
+        window.toggleAllSentCollapse = function() {
+            const cur = getCur();
+            const sentList = (cur.scenariosList || []).filter(s => cur.sentIds[s.id]);
+            const allCollapsed = sentList.every(s => collapsedSentIds[s.id]);
+            sentList.forEach(s => {
+                collapsedSentIds[s.id] = !allCollapsed;
+            });
+            renderScenarios();
+            showToast(allCollapsed ? '送信済みを展開しました' : '送信済みを折り畳みました');
         };
 
         let toastTimer = null;
@@ -676,9 +705,10 @@
 
             filteredScenarios.forEach(item => {
                 const isSent = !!cur.sentIds[item.id];
+                const isCollapsed = isSent && !!collapsedSentIds[item.id];
                 const isEditing = editingScenarioId === item.id;
                 const div = document.createElement('div');
-                div.className = `scenario-item ${isSent ? 'sent' : ''} ${isEditing ? 'editing' : ''}`;
+                div.className = `scenario-item ${isSent ? 'sent' : ''} ${isCollapsed ? 'collapsed' : ''} ${isEditing ? 'editing' : ''}`;
                 div.setAttribute('data-id', item.id);
                 let tabOptionsHTML = cur.tabs.map(t => `<option value="${escapeHTML(t)}" ${item.tab === t ? 'selected' : ''}>${escapeHTML(t)}</option>`).join('');
 
@@ -695,12 +725,16 @@
                     `;
                 } else {
                     div.innerHTML = `
-                        <div style="display:flex; gap:6px; align-items:center;">
-                            <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
-                            <strong style="color:var(--text); font-size:0.7rem;">${escapeHTML(item.speaker)}</strong>
-                            ${isSent ? '<span style="color:#34d399; font-size:0.6rem;">✓送信済</span>' : ''}
+                        <div style="display:flex; gap:6px; align-items:center; justify-content:space-between;">
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
+                                <strong style="color:var(--text); font-size:0.7rem;">${escapeHTML(item.speaker)}</strong>
+                                ${isSent ? `<span style="color:#34d399; font-size:0.6rem;">✓送信済</span>` : ''}
+                                ${isCollapsed ? `<span style="color:var(--text-muted); font-size:0.6rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">：${escapeHTML(item.text).slice(0, 15)}...</span>` : ''}
+                            </div>
+                            ${isSent ? `<button onclick="toggleCollapseSent(event, '${item.id}')" style="font-size:0.55rem; padding:2px 5px;">${isCollapsed ? '▶ 展開' : '▼ 畳む'}</button>` : ''}
                         </div>
-                        <div style="font-size:0.75rem; word-break:break-all;">${escapeHTML(item.text)}</div>
+                        <div class="scenario-body" style="font-size:0.75rem; word-break:break-all;">${escapeHTML(item.text)}</div>
                         <div class="scenario-actions-top">
                             <div class="actions-row">
                                 <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)">${tabOptionsHTML}</select>
@@ -731,8 +765,12 @@
         window.toggleCheck = function(e, id) {
             e.stopPropagation();
             const cur = getCur();
-            if (cur.sentIds[id]) delete cur.sentIds[id];
-            else cur.sentIds[id] = true;
+            if (cur.sentIds[id]) {
+                delete cur.sentIds[id];
+                delete collapsedSentIds[id];
+            } else {
+                cur.sentIds[id] = true;
+            }
             save(); renderScenarios();
         };
 
