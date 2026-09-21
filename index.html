@@ -23,12 +23,6 @@
         .tab-edit-mini { background: none; border: none; color: var(--text-muted); font-size: 0.65rem; padding: 4px 6px; cursor: pointer; border-left: 1px solid var(--border); }
         .tab-edit-mini:hover { color: #ef4444; }
 
-        .add-box { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
-        .add-box input:nth-child(1) { flex: 0.25; min-width: 70px; }
-        .add-box input:nth-child(2) { flex: 0.45; min-width: 120px; }
-        .add-box select { flex: 0.2; min-width: 70px; }
-        .add-box button { flex: 0.1; min-width: 50px; }
-
         input, button, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
         .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; font-size: 0.8rem; text-align: center; touch-action: manipulation; position: relative; word-break: break-all; cursor: pointer; }
@@ -119,13 +113,6 @@
         <input type="file" id="fileInput" accept=".txt,.json,.csv,.md,.pdf,.docx" style="width:100%; margin-bottom:6px; font-size:0.7rem;">
         <textarea id="importPreview" placeholder="ここに抽出されたテキスト、または直接ペーストした文章を解析・登録します" style="width:100%; height:55px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
         <button onclick="parseAndImportText()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">抽出テキストを全件に登録</button>
-    </div>
-
-    <div class="add-box">
-        <input type="text" id="labelInput" placeholder="ラベル (例: 目星)">
-        <input type="text" id="textInput" placeholder="コマンド/台詞 (1d100<=70 目星)">
-        <select id="itemTabSelect"></select>
-        <button onclick="addItem()">追加</button>
     </div>
 
     <div class="grid" id="buttonGrid"></div>
@@ -403,7 +390,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'tab-btn';
                 btn.textContent = tab;
-                btn.onclick = () => { cur.currentTab = tab; save(); renderTabs(); };
+                btn.onclick = () => { cur.currentTab = tab; save(); renderTabs(); renderGrid(); };
                 
                 const editBtn = document.createElement('button');
                 editBtn.className = 'tab-edit-mini';
@@ -417,22 +404,6 @@
                 item.appendChild(btn);
                 item.appendChild(editBtn);
                 bar.appendChild(item);
-            });
-            renderItemTabSelectOptions();
-        }
-
-        function renderItemTabSelectOptions() {
-            const cur = getCur();
-            const sel = document.getElementById('itemTabSelect');
-            if (!sel) return;
-            const currentVal = sel.value;
-            sel.innerHTML = '';
-            cur.tabs.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t;
-                opt.textContent = t;
-                if (t === (currentVal || cur.currentTab)) opt.selected = true;
-                sel.appendChild(opt);
             });
         }
 
@@ -498,19 +469,6 @@
                 renderAll();
                 showToast(`タブ名を「${newName}」に変更`);
             }
-        }
-
-        function addItem() {
-            const cur = getCur();
-            const label = document.getElementById('labelInput').value.trim();
-            const text = document.getElementById('textInput').value.trim();
-            if (!label || !text) return;
-            if (!cur.customItems[cur.currentTab]) cur.customItems[cur.currentTab] = [];
-            cur.customItems[cur.currentTab].push({ label, text });
-            save();
-            document.getElementById('labelInput').value = '';
-            document.getElementById('textInput').value = '';
-            renderGrid();
         }
 
         function deleteItem(idx) {
