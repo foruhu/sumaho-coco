@@ -61,7 +61,6 @@
 
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
         
-        /* 【変更】トースト通知の横幅を画面いっぱいに広げる設定 */
         #toast { 
             position: fixed; 
             bottom: 16px; 
@@ -587,7 +586,7 @@
                 const div = document.createElement('div');
                 div.className = 'btn';
                 div.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
-                div.onclick = () => copy('―――[ ' + item.text.replace(/\r?\n/g, '　【　】　') + ' ]―――');
+                div.onclick = () => copy(item.text.replace(/\r?\n/g, '　【　】　'));
                 grid.appendChild(div);
             });
         }
@@ -648,7 +647,7 @@
                         </div>
                         <div style="flex:1; min-width:0;">
                             <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
-                                <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
+                                <strong style="color:var::text);">${escapeHTML(item.speaker)}</strong>
                                 ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                             </div>
                             <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
@@ -659,8 +658,8 @@
                         
                         const joinedText = item.text.replace(/\r?\n/g, '　【　】　');
                         const payload = item.speaker === 'KP' 
-                            ? `―――[ ${joinedText} ]―――` 
-                            : `${item.speaker}：―――[ ${joinedText} ]―――`;
+                            ? joinedText 
+                            : `${item.speaker}：${joinedText}`;
                             
                         cur.sentIds[item.id] = true;
                         save();
