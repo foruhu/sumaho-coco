@@ -87,18 +87,8 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             padding: 4px 6px;
+            flex: 1;
         }
-        .index-add-sub-btn {
-            background: var(--bg);
-            border: 1px dashed var(--border);
-            border-radius: 4px;
-            color: var(--text-muted);
-            font-size: 0.55rem;
-            padding: 2px 4px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-        .index-add-sub-btn:hover { color: var(--text); border-color: var(--primary); background: #121019; }
 
         .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
@@ -194,7 +184,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v12';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v13';
         let editingScenarioId = null;
         let activeIndexId = null;
 
@@ -223,7 +213,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v11') || localStorage.getItem('sumaho_coco_multiscenario_v10');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v12') || localStorage.getItem('sumaho_coco_multiscenario_v11');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -611,36 +601,29 @@
             showToast('新しい目次を追加しました');
         };
 
-        window.insertUnderIndex = function(targetId) {
+        // 左のテキストを目次（見出し）に変換／追加する機能
+        window.makeItemIndex = function(id) {
             const cur = getCur();
-            const idx = cur.scenariosList.findIndex(s => s.id === targetId);
-            if (idx === -1) return;
+            const item = cur.scenariosList.find(s => s.id === id);
+            if (!item) return;
+
+            const currentFirstLine = (item.text || '').split('\n')[0].trim();
+            const defaultHeading = /^[【《].*?[】》]/.test(currentFirstLine) 
+                ? currentFirstLine.match(/^[【《].*?[】》]/)[0] 
+                : '【新目次】';
+
+            const rawTitle = prompt('目次化する見出しを入力:', defaultHeading);
+            if (rawTitle === null || !rawTitle.trim()) return;
+
+            const formattedHeading = (/^[【《].*?[】》]/.test(rawTitle.trim())) ? rawTitle.trim() : `【${rawTitle.trim()}】`;
             
-            let insertPos = idx + 1;
-            while (insertPos < cur.scenariosList.length) {
-                const s = cur.scenariosList[insertPos];
-                const firstLine = (s.text || '').split('\n')[0].trim();
-                if (/^[【《].*?[】》]/.test(firstLine)) break;
-                insertPos++;
-            }
+            // 本文側から既存の見出しプレフィックスを置換するか、そのまま連結
+            const bodyOnly = item.text.replace(/^[【《].*?[】》]\s*/, '');
+            item.text = bodyOnly ? `${formattedHeading}${bodyOnly}` : formattedHeading;
 
-            const currentItem = cur.scenariosList[idx];
-            const speaker = prompt('話者:', currentItem.speaker || 'KP');
-            if (speaker === null) return;
-            const text = prompt('追加する本文:');
-            if (text === null || !text.trim()) return;
-
-            const newItem = {
-                id: 'ins_' + Date.now(),
-                tab: currentItem.tab,
-                speaker: speaker.trim() || 'KP',
-                text: text
-            };
-
-            cur.scenariosList.splice(insertPos, 0, newItem);
             save();
             renderScenarios();
-            showToast('目次ブロック内に追加しました');
+            showToast('目次として設定しました');
         };
 
         window.deleteIndexBlockAndChildren = function(headerId) {
@@ -844,7 +827,6 @@
                 const isSelected = activeIndexId === item.id;
                 btn.style.background = isSelected ? 'var(--primary)' : 'var(--bg)';
                 btn.style.color = isSelected ? '#fff' : 'var(--text-muted)';
-                btn.style.flex = '1';
                 
                 btn.onclick = () => {
                     if (activeIndexId === item.id) {
@@ -859,15 +841,6 @@
                     }
                 };
 
-                const addSubBtn = document.createElement('button');
-                addSubBtn.className = 'index-add-sub-btn';
-                addSubBtn.textContent = '+';
-                addSubBtn.title = 'この目次セクション内に追加';
-                addSubBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    insertUnderIndex(item.id);
-                };
-
                 const delIndexBtn = document.createElement('button');
                 delIndexBtn.className = 'scenario-del-btn';
                 delIndexBtn.textContent = '✕';
@@ -878,7 +851,6 @@
                 };
 
                 group.appendChild(btn);
-                group.appendChild(addSubBtn);
                 group.appendChild(delIndexBtn);
                 indexBar.appendChild(group);
             });
@@ -961,6 +933,7 @@
                             <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
                                 ${tabOptionsHTML}
                             </select>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); makeItemIndex('${item.id}')" title="この項目を目次化">📌目次</button>
                             <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')" title="この下に追加">+挿入</button>
                             <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
                             <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
@@ -970,7 +943,7 @@
                             <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
                         </div>
                         <div style="flex:1; min-width:0;">
-                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 250px;">
                                 <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
                                 ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                             </div>
