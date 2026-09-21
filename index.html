@@ -38,7 +38,6 @@
         .scenario-search-box { width: 100%; margin-bottom: 8px; }
         .scenario-search-box input { width: 100%; font-size: 0.75rem; }
         
-        /* 左右分割コンテナ（左リスト、右目次バー） */
         .scenario-body-container {
             display: flex;
             gap: 8px;
@@ -53,7 +52,6 @@
             padding-right: 4px;
         }
 
-        /* 右側目次バー（縦積み）オイル＆スリム化 */
         #scenarioIndexBar {
             display: flex;
             flex-direction: column;
@@ -66,7 +64,10 @@
         }
         #scenarioIndexBar::-webkit-scrollbar { width: 3px; }
         #scenarioIndexBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-        #scenarioIndexBar .scenario-action-btn {
+        
+        /* 目次アイテムのカード群 */
+        .index-item-group { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+        .scenario-index-btn {
             width: 100%;
             text-align: left;
             overflow: hidden;
@@ -74,6 +75,18 @@
             white-space: nowrap;
             padding: 4px 6px;
         }
+        .index-add-sub-btn {
+            width: 100%;
+            background: var(--bg);
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-size: 0.55rem;
+            padding: 2px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .index-add-sub-btn:hover { color: var(--text); border-color: var(--primary); background: #121019; }
 
         .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
@@ -160,7 +173,6 @@
         <div class="scenario-search-box">
             <input type="text" id="scenarioSearchInput" placeholder="🔍 話者・本文で検索..." oninput="renderScenarios()">
         </div>
-        <!-- 左右分割コンテナ：左にリスト、右に縦積み目次バー -->
         <div class="scenario-body-container">
             <div id="scenarioList"></div>
             <div id="scenarioIndexBar"></div>
@@ -172,7 +184,7 @@
     <script>
         const STORAGE_KEY = 'sumaho_coco_multiscenario_v10';
         let editingScenarioId = null;
-        let activeIndexId = null; // 選択中の目次フィルタID
+        let activeIndexId = null;
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -553,6 +565,39 @@
             showToast('途中に挿入しました');
         };
 
+        // 目次直下への項目追加
+        window.insertUnderIndex = function(targetId) {
+            const cur = getCur();
+            const idx = cur.scenariosList.findIndex(s => s.id === targetId);
+            if (idx === -1) return;
+            
+            // 次の目次手前、またはリストの終わりまでを探す
+            let insertPos = idx + 1;
+            while (insertPos < cur.scenariosList.length) {
+                const s = cur.scenariosList[insertPos];
+                const firstLine = (s.text || '').split('\n')[0].trim();
+                if (/^[【《].*?[】》]/.test(firstLine)) break;
+                insertPos++;
+            }
+
+            const currentItem = cur.scenariosList[idx];
+            const speaker = prompt('話者:', currentItem.speaker || 'KP');
+            if (speaker === null) return;
+            const text = prompt('追加する本文:');
+            if (text === null || !text.trim()) return;
+
+            const newItem = {
+                id: 'ins_' + Date.now(),
+                tab: currentItem.tab,
+                speaker: speaker.trim() || 'KP',
+                text: text
+            };
+            cur.scenariosList.splice(insertPos, 0, newItem);
+            save();
+            renderScenarios();
+            showToast('目次ブロック内に追加しました');
+        };
+
         window.editScenarioItem = function(id) {
             editingScenarioId = id;
             renderScenarios();
@@ -701,9 +746,8 @@
             }
             indexBar.style.display = 'flex';
 
-            // 「全表示」ボタン
             const allBtn = document.createElement('button');
-            allBtn.className = 'scenario-action-btn';
+            allBtn.className = 'scenario-action-btn scenario-index-btn';
             allBtn.textContent = '全表示';
             allBtn.style.background = activeIndexId === null ? 'var(--primary)' : 'var(--bg)';
             allBtn.style.color = activeIndexId === null ? '#fff' : 'var(--text-muted)';
@@ -715,8 +759,11 @@
 
             indexItems.forEach(item => {
                 const firstLine = item.text.split('\n')[0].trim();
+                const group = document.createElement('div');
+                group.className = 'index-item-group';
+
                 const btn = document.createElement('button');
-                btn.className = 'scenario-action-btn';
+                btn.className = 'scenario-action-btn scenario-index-btn';
                 btn.textContent = firstLine.slice(0, 10);
                 btn.title = firstLine;
                 const isSelected = activeIndexId === item.id;
@@ -734,7 +781,19 @@
                         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 };
-                indexBar.appendChild(btn);
+
+                const addSubBtn = document.createElement('button');
+                addSubBtn.className = 'index-add-sub-btn';
+                addSubBtn.textContent = '+直下追加';
+                addSubBtn.title = 'この目次セクション内に追加';
+                addSubBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    insertUnderIndex(item.id);
+                };
+
+                group.appendChild(btn);
+                group.appendChild(addSubBtn);
+                indexBar.appendChild(group);
             });
         }
 
@@ -750,13 +809,10 @@
             const searchInput = document.getElementById('scenarioSearchInput');
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-            // 右側目次バー描画
             renderScenarioIndex(allScenarios);
 
-            // フィルタ適用
             let filteredScenarios = allScenarios;
 
-            // 目次フィルター（activeIndexIdがある場合、その目次〜次の目次までを抽出）
             if (activeIndexId) {
                 const startIdx = allScenarios.findIndex(s => s.id === activeIndexId);
                 if (startIdx !== -1) {
@@ -773,7 +829,6 @@
                 }
             }
 
-            // 検索フィルタ
             if (query) {
                 filteredScenarios = filteredScenarios.filter(item => {
                     return (item.speaker && item.speaker.toLowerCase().includes(query)) ||
