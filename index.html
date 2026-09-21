@@ -35,22 +35,26 @@
 
         .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
         .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px; }
-        .scenario-search-box { width: 100%; margin-bottom: 8px; }
+        .scenario-search-box { width: 100%; margin-bottom: 6px; }
         .scenario-search-box input { width: 100%; font-size: 0.75rem; }
         
+        #scenarioIndexBar { display: flex; gap: 4px; overflow-x: auto; padding: 4px 0; margin-bottom: 8px; font-size: 0.7rem; flex-shrink: 0; }
+        #scenarioIndexBar::-webkit-scrollbar { height: 4px; }
+        #scenarioIndexBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
         #scenarioList {
-            max-height: 50vh;
+            max-height: 48vh;
             overflow-y: auto;
             padding-right: 4px;
         }
 
-        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; position: relative; }
+        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
         .scenario-item.editing { cursor: default; border-color: var(--primary); background: #121019; }
         
         .scenario-actions-top { position: absolute; top: 4px; right: 6px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
-        .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; }
+        .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
         .scenario-del-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 5px; cursor: pointer; }
         .scenario-del-btn:hover { background: #ef4444; color: #fff; }
@@ -129,6 +133,8 @@
         <div class="scenario-search-box">
             <input type="text" id="scenarioSearchInput" placeholder="🔍 話者・本文で検索..." oninput="renderScenarios()">
         </div>
+        <!-- 目次ジャンプバー -->
+        <div id="scenarioIndexBar"></div>
         <div id="scenarioList"></div>
     </div>
 
@@ -153,7 +159,8 @@
                         '描写': []
                     },
                     scenariosList: [
-                        { id: 's1', tab: '情報', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' }
+                        { id: 's1', tab: '情報', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' },
+                        { id: 's2', tab: '描写', speaker: 'KP', text: '【導入シーン】薄暗いロビーに足を踏み入れると、不気味な静寂が迎えてくれる。' }
                     ],
                     sentIds: {}
                 }
@@ -483,6 +490,7 @@
             if (!item) return;
             item.tab = newTab;
             save();
+            renderScenarios();
             showToast(`タブを「${newTab}」に変更`);
         };
 
@@ -610,7 +618,7 @@
             if (editingScenarioId === id) editingScenarioId = null;
             save();
             renderScenarios();
-        }
+        };
 
         let toastTimer = null;
         function showToast(msg) {
@@ -641,6 +649,40 @@
             });
         }
 
+        function renderScenarioIndex(allScenarios) {
+            const indexBar = document.getElementById('scenarioIndexBar');
+            if (!indexBar) return;
+            indexBar.innerHTML = '';
+
+            const indexItems = allScenarios.filter(s => {
+                const firstLine = (s.text || '').split('\n')[0].trim();
+                return /^[【《].*?[】》]/.test(firstLine);
+            });
+
+            if (indexItems.length === 0) {
+                indexBar.style.display = 'none';
+                return;
+            }
+            indexBar.style.display = 'flex';
+
+            indexItems.forEach(item => {
+                const firstLine = item.text.split('\n')[0].trim();
+                const btn = document.createElement('button');
+                btn.className = 'scenario-action-btn';
+                btn.textContent = firstLine.slice(0, 16);
+                btn.title = firstLine;
+                btn.onclick = () => {
+                    const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.style.borderColor = 'var(--primary)';
+                        setTimeout(() => { el.style.borderColor = ''; }, 1500);
+                    }
+                };
+                indexBar.appendChild(btn);
+            });
+        }
+
         function renderScenarios() {
             const cur = getCur();
             const list = document.getElementById('scenarioList');
@@ -657,6 +699,8 @@
                 return (item.speaker && item.speaker.toLowerCase().includes(query)) ||
                        (item.text && item.text.toLowerCase().includes(query));
             }) : allScenarios;
+
+            renderScenarioIndex(filteredScenarios);
 
             if (filteredScenarios.length === 0) {
                 list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:16px;">該当する文章はありません</div>';
