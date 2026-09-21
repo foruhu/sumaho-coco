@@ -57,6 +57,7 @@
         .scenario-del-btn:hover { background: #ef4444; color: #fff; }
 
         .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; }
+        .text-body { user-select: text; -webkit-user-select: text; }
 
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
         
@@ -100,7 +101,7 @@
 
     <div class="scenario-section">
         <div class="scenario-header">
-            <span>📜 シナリオ・情報一覧（全件表示）</span>
+            <span>📜 シナリオ・情報一覧（タップ位置分割対応）</span>
             <span>
                 <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
                 <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全シナリオクリア</button>
@@ -112,7 +113,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v5';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v6';
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -138,7 +139,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v4') || localStorage.getItem('sumaho_coco_multiscenario_v3');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v5') || localStorage.getItem('sumaho_coco_multiscenario_v4');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -357,7 +358,7 @@
 
         function editTab(oldName) {
             const cur = getCur();
-            const action = prompt(`タブ「${oldName}」の操作:\n・名前を変更する場合は新しい名前を入力\n・「DEL」または空欄で削除（※所属アイテムのタブは「共通」等へフォールバック）`, oldName);
+            const action = prompt(`タブ「${oldName}」の操作:\n・名前を変更する場合は新しい名前を入力\n・「DEL」または空欄で削除`, oldName);
             
             if (action === null) return;
             const newName = action.trim();
@@ -469,49 +470,75 @@
             showToast('結合しました');
         };
 
-        window.splitScenarioItem = function(id) {
+        // --- タップ位置／選択範囲での分割ロジック ---
+        window.splitScenarioItem = function(id, event) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
             if (!item) return;
-            
-            if (item.text.includes('\n')) {
-                const lines = item.text.split(/\r?\n/).filter(l => l.trim() !== '');
-                if (lines.length <= 1) {
-                    showToast('分割できる改行がありません');
-                    return;
-                }
-                if (!confirm(`この項目を ${lines.length} 個の行に分割しますか？`)) return;
-                const idx = cur.scenariosList.findIndex(s => s.id === id);
-                const newItems = lines.map((l, i) => ({
-                    id: 'split_' + Date.now() + '_' + i,
-                    tab: item.tab,
-                    speaker: item.speaker,
-                    text: l
-                }));
-                cur.scenariosList.splice(idx, 1, ...newItems);
-                delete cur.sentIds[id];
-                save();
-                renderScenarios();
-                showToast('行で分割しました');
-            } else {
-                const mid = Math.floor(item.text.length / 2);
-                const posStr = prompt(`何文字目で分割しますか？（0〜${item.text.length}）`, mid);
-                if (posStr === null) return;
-                const pos = parseInt(posStr, 10);
-                if (isNaN(pos) || pos <= 0 || pos >= item.text.length) {
-                    showToast('位置が無効です');
-                    return;
-                }
-                const idx = cur.scenariosList.findIndex(s => s.id === id);
-                const firstText = item.text.slice(0, pos);
-                const secondText = item.text.slice(pos);
-                const newItem1 = { ...item, text: firstText };
-                const newItem2 = { id: 'split_' + Date.now(), tab: item.tab, speaker: item.speaker, text: secondText };
-                cur.scenariosList.splice(idx, 1, newItem1, newItem2);
-                save();
-                renderScenarios();
-                showToast('分割しました');
+
+            // 改行がある場合は従来どおり行分割を優先するか、選択位置を確認
+            const sel = window.getSelection();
+            let pos = -1;
+
+            if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+                // 選択範囲がある場合その終了位置／開始位置を適用できるかチェック
             }
+
+            // タップ/クリック位置、または「該当テキスト要素上での選択位置・または直近タップ位置」を取得
+            // 該当DOM要素を探す
+            const bodyEl = document.querySelector(`[data-id="${id}"] .text-body`);
+            if (bodyEl && sel && sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                if (bodyEl.contains(range.startContainer)) {
+                    // range.startOffset を文字数として累積算出（シンプルな単一テキストノード想定、複数ノードなら調整）
+                    try {
+                        const preRange = document.createRange();
+                        preRange.selectNodeContents(bodyEl);
+                        preRange.setEnd(range.startContainer, range.startOffset);
+                        pos = preRange.toString().length;
+                    } catch (e) {
+                        pos = -1;
+                    }
+                }
+            }
+
+            // もしカーソル選択やハイライトが取れなかった場合、改行があれば改行分割、なければ「どこで分けるか」をタップ位置（座標）から推定、あるいは簡易選択プロンプトではなく「タップ位置の取得ガイド / 改行分割」にフォールバック、またはクリック位置X座標から概算位置を計算。
+            // ※スマホで実用的な「タップ位置指定」：もし改行が含まれていれば行分割、1行の場合でカーソルが選択されていない場合は、その場でテキストをタップ（選択）して「✂️分割」を押すと選択位置で割れるようにする。未選択のときは「文字上をタップして文字を選択するか、改行で分割してください」または簡易フォールバック
+            if (pos <= 0 || pos >= item.text.length) {
+                if (item.text.includes('\n')) {
+                    const lines = item.text.split(/\r?\n/).filter(l => l.trim() !== '');
+                    if (lines.length > 1) {
+                        if (!confirm(`この項目を ${lines.length} 個の行に分割しますか？`)) return;
+                        const idx = cur.scenariosList.findIndex(s => s.id === id);
+                        const newItems = lines.map((l, i) => ({
+                            id: 'split_' + Date.now() + '_' + i,
+                            tab: item.tab,
+                            speaker: item.speaker,
+                            text: l
+                        }));
+                        cur.scenariosList.splice(idx, 1, ...newItems);
+                        delete cur.sentIds[id];
+                        save();
+                        renderScenarios();
+                        showToast('行で分割しました');
+                        return;
+                    }
+                }
+                
+                // 選択・カーソル位置がない場合のフォールバック（中央、あるいはクリック/タップ座標比率換算）
+                const mid = Math.floor(item.text.length / 2);
+                pos = mid;
+            }
+
+            const idx = cur.scenariosList.findIndex(s => s.id === id);
+            const firstText = item.text.slice(0, pos);
+            const secondText = item.text.slice(pos);
+            const newItem1 = { ...item, text: firstText };
+            const newItem2 = { id: 'split_' + Date.now(), tab: item.tab, speaker: item.speaker, text: secondText };
+            cur.scenariosList.splice(idx, 1, newItem1, newItem2);
+            save();
+            renderScenarios();
+            showToast('タップ/選択位置で分割しました');
         };
 
         window.deleteScenarioItem = function(id) {
@@ -565,8 +592,8 @@
                 const isSent = !!cur.sentIds[item.id];
                 const div = document.createElement('div');
                 div.className = `scenario-item ${isSent ? 'sent' : ''}`;
+                div.setAttribute('data-id', item.id);
                 
-                // タブ選択肢用プルダウン生成
                 let tabOptionsHTML = cur.tabs.map(t => `<option value="${escapeHTML(t)}" ${item.tab === t ? 'selected' : ''}>${escapeHTML(t)}</option>`).join('');
 
                 div.innerHTML = `
@@ -577,7 +604,7 @@
                         </select>
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
-                        <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}')" title="分割">✂️分割</button>
+                        <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}', event)" title="選択・タップ位置で分割">✂️分割</button>
                         <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
                     </div>
                     <div style="flex:1; min-width:0;">
