@@ -30,6 +30,14 @@
         .import-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
         .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
         .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); }
+        
+/* ▼ 追加・修正：縦スクロールと最大高さを付与してDOM溢れを防ぐ */
+#scenarioList {
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
         .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
