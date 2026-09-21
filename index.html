@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sumaho-coco 完全版（送信済み折り畳み対応）</title>
+    <title>Sumaho-coco 完全版（改行・折り畳み対応）</title>
     <!-- Mammoth & PDF.js for import -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -132,6 +132,11 @@
         .scenario-item.collapsed .scenario-actions-top {
             display: none;
         }
+        .scenario-body {
+            font-size: 0.75rem;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
         .scenario-actions-top { display: flex; flex-direction: column; gap: 2px; border-top: 1px dashed var(--border); padding-top: 4px; margin-top: 2px; }
         .actions-row { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
         .item-tab-select { background: var(--bg); color: var(--text); border: 1px solid var(--border); font-size: 0.6rem; padding: 2px; border-radius: 3px; }
@@ -150,7 +155,7 @@
         }
         .toast.show { transform: translateX(-50%) translateY(0); }
         .import-area { padding: 6px 8px; background: var(--surface); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
-        textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 4px; font-size: 0.7rem; }
+        textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 4px; font-size: 0.7rem; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -202,7 +207,7 @@
     <script>
         const STORAGE_KEY = 'sumaho_coco_multiscenario_v16';
         let editingScenarioId = null;
-        let collapsedSentIds = {}; // 送信済み折り畳み管理用IDマップ
+        let collapsedSentIds = {};
 
         let historyStack = [];
         function pushHistory() {
@@ -233,7 +238,7 @@
                         'PC1': [], 'KP用': [], '情報': []
                     },
                     scenariosList: [
-                        { id: 's1', tab: '共通', speaker: 'KP', text: 'セッション開始します。' },
+                        { id: 's1', tab: '共通', speaker: 'KP', text: 'セッション開始します。\n改行テスト1行目\n2行目' },
                         { id: 's2', tab: 'PC1', speaker: 'PC1', text: '調査を行ないます。' }
                     ],
                     sentIds: {}
@@ -387,7 +392,7 @@
                 let content = text;
                 const colonMatch = text.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
                 if (colonMatch) {
-                    const sp = colonMatch.toUpperCase();
+                    const sp = colonMatch[1].toUpperCase();
                     speaker = sp === 'GM' ? 'KP' : sp;
                     content = colonMatch[2];
                 }
@@ -716,7 +721,7 @@
                     div.innerHTML = `
                         <div style="display:flex; flex-direction:column; gap:4px;" onclick="event.stopPropagation()">
                             <input type="text" id="edit-speaker-${item.id}" value="${escapeAttr(item.speaker)}" placeholder="話者">
-                            <textarea id="edit-text-${item.id}" rows="3">${escapeHTML(item.text)}</textarea>
+                            <textarea id="edit-text-${item.id}" rows="4" style="white-space: pre-wrap;">${escapeHTML(item.text)}</textarea>
                             <div style="display:flex; justify-content:flex-end; gap:4px;">
                                 <button onclick="cancelInlineEdit()">キャンセル</button>
                                 <button onclick="saveInlineEdit('${item.id}')" style="background:var(--primary); color:#fff;">保存</button>
@@ -730,11 +735,11 @@
                                 <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
                                 <strong style="color:var(--text); font-size:0.7rem;">${escapeHTML(item.speaker)}</strong>
                                 ${isSent ? `<span style="color:#34d399; font-size:0.6rem;">✓送信済</span>` : ''}
-                                ${isCollapsed ? `<span style="color:var(--text-muted); font-size:0.6rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">：${escapeHTML(item.text).slice(0, 15)}...</span>` : ''}
+                                ${isCollapsed ? `<span style="color:var(--text-muted); font-size:0.6rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">：${escapeHTML(item.text).split('\n')[0]}...</span>` : ''}
                             </div>
                             ${isSent ? `<button onclick="toggleCollapseSent(event, '${item.id}')" style="font-size:0.55rem; padding:2px 5px;">${isCollapsed ? '▶ 展開' : '▼ 畳む'}</button>` : ''}
                         </div>
-                        <div class="scenario-body" style="font-size:0.75rem; word-break:break-all;">${escapeHTML(item.text)}</div>
+                        <div class="scenario-body">${escapeHTML(item.text)}</div>
                         <div class="scenario-actions-top">
                             <div class="actions-row">
                                 <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)">${tabOptionsHTML}</select>
