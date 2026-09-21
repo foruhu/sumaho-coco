@@ -8,28 +8,139 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         :root {
-            --bg: #0f0f13;
-            --surface: #18181b;
-            --border: #27272a;
-            --text: #f4f4f5;
-            --text-muted: #a1a1aa;
-            --primary: #9333ea;
+            --bg: #09090b; --surface: #18181b; --primary: #9333ea; --accent: #10b981; --text: #f4f4f5; --text-muted: #a1a1aa; --border: #27272a;
         }
-        body {
-            background-color: var(--bg) !important;
-            color: var(--text) !important;
-            margin: 0;
-            padding: 10px;
-        }
-        .import-section, .scenario-section, .scenario-selector, .scenario-item {
-            background-color: var(--surface) !important;
-            border-color: var(--border) !important;
-            color: var(--text) !important;
-        }
-    </style>
-    <!-- <link rel="stylesheet" href="./style.css"> -->
-</head>
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 12px; font-size: 13px; padding-bottom: 90px; }
+        .scenario-selector { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; background: var(--surface); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
+        .scenario-selector select { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px; font-size: 0.8rem; }
+        h2 { color: #c084fc; font-size: 1rem; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+        
+        .tab-bar { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; align-items: center; }
+        .tab-item { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+        .tab-btn { background: none; color: var(--text-muted); border: none; padding: 5px 8px; font-size: 0.75rem; white-space: nowrap; cursor: pointer; }
+        .tab-item.active { background: var(--primary); border-color: var(--primary); }
+        .tab-item.active .tab-btn { color: #fff; font-weight: bold; }
+        .tab-edit-mini { background: none; border: none; color: var(--text-muted); font-size: 0.65rem; padding: 4px 6px; cursor: pointer; border-left: 1px solid var(--border); }
+        .tab-edit-mini:hover { color: #ef4444; }
 
+        input, button, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; box-sizing: border-box; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+        .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; font-size: 0.8rem; text-align: center; touch-action: manipulation; position: relative; word-break: break-all; cursor: pointer; }
+        .btn:active { background: #27272a; }
+        .del-btn { position: absolute; top: 2px; right: 4px; font-size: 0.6rem; color: #ef4444; background: none; border: none; padding: 2px 4px; cursor: pointer; }
+        
+        .import-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+        .data-io-bar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+        .data-io-bar button { flex: 1; min-width: 120px; font-size: 0.7rem; padding: 5px 8px; cursor: pointer; }
+
+        .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+        .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px; }
+        .scenario-search-box { width: 100%; margin-bottom: 8px; }
+        .scenario-search-box input { width: 100%; font-size: 0.75rem; }
+        
+        .scenario-body-container {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        #scenarioList {
+            flex: 1;
+            min-width: 0;
+            max-height: 48vh;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        #scenarioIndexBar {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 110px;
+            flex-shrink: 0;
+            max-height: 48vh;
+            overflow-y: auto;
+            padding-left: 2px;
+        }
+        #scenarioIndexBar::-webkit-scrollbar { width: 3px; }
+        #scenarioIndexBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        
+        .index-add-main-btn {
+            width: 100%;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            padding: 4px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        .index-add-main-btn:hover { opacity: 0.9; }
+
+        .index-item-group { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+        .scenario-index-btn {
+            width: 100%;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 4px 6px;
+        }
+        .index-add-sub-btn {
+            width: 100%;
+            background: var(--bg);
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-size: 0.55rem;
+            padding: 2px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .index-add-sub-btn:hover { color: var(--text); border-color: var(--primary); background: #121019; }
+
+        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
+        .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
+        .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
+        .scenario-item.editing { cursor: default; border-color: var(--primary); background: #121019; }
+        
+        .scenario-actions-top { position: absolute; top: 4px; right: 6px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
+        .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
+        .scenario-del-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 5px; cursor: pointer; }
+        .scenario-del-btn:hover { background: #ef4444; color: #fff; }
+
+        .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; }
+        .text-body { user-select: text; -webkit-user-select: text; white-space: pre-wrap; }
+
+        input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
+        
+        #toast { 
+            position: fixed; 
+            bottom: 16px; 
+            left: 50%; 
+            transform: translateX(-50%) translateY(80px); 
+            background: #0d9488; 
+            color: #fff; 
+            padding: 10px 14px; 
+            border-radius: 12px; 
+            font-size: 0.75rem; 
+            font-weight: bold; 
+            transition: transform 0.25s ease-out; 
+            z-index: 999; 
+            width: 92%; 
+            max-width: 500px; 
+            text-align: center; 
+            word-break: break-all; 
+            pointer-events: none; 
+            box-sizing: border-box; 
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
 <body>
     <div class="scenario-selector">
         <span style="font-weight:bold; color:#c084fc;">📁 シナリオ:</span>
@@ -63,12 +174,6 @@
     </div>
 
     <div class="grid" id="buttonGrid"></div>
-    <div class="custom-add-bar" style="display:flex; gap:6px; margin-bottom:10px; align-items:center;">
-    <input type="text" id="customLabelInput" placeholder="ラベル (例: 目星)" style="flex:1; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem;">
-    <input type="text" id="customTextInput" placeholder="コマンド/台詞 (1d100<=70)" style="flex:1.5; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem;">
-    <button onclick="addCustomItemFromUI()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; font-weight:bold;">追加</button>
-</div>
-
 
     <div class="scenario-section">
         <div class="scenario-header">
@@ -91,10 +196,794 @@
     <div id="toast">コピーしました！</div>
 
     <script>
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v11';
+        let editingScenarioId = null;
+        let activeIndexId = null;
+
+        const defaultData = {
+            currentScenario: 'sample_scenario',
+            scenarios: {
+                'sample_scenario': {
+                    title: '生物ユニット 55（サンプル）',
+                    tabs: ['共通', 'PC1', 'KP用', '情報', '描写'],
+                    currentTab: '情報',
+                    customItems: {
+                        '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
+                        'PC1': [{ label: '目星', text: '1d100<=70 目星' }],
+                        'KP用': [{ label: 'シークレット', text: '【KP】シークレットダイス' }],
+                        '情報': [],
+                        '描写': []
+                    },
+                    scenariosList: [
+                        { id: 's1', tab: '情報', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' },
+                        { id: 's2', tab: '描写', speaker: 'KP', text: '【導入シーン】薄暗いロビーに足を踏み入れると、不気味な静寂が迎えてくれる。' }
+                    ],
+                    sentIds: {}
+                }
+            }
+        };
+
+        let allData;
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v10') || localStorage.getItem('sumaho_coco_multiscenario_v9');
+            allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
+            if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
+        } catch (e) {
+            console.error('LocalStorage load error, resetting...', e);
+            allData = JSON.parse(JSON.stringify(defaultData));
+        }
+
+        function getCur() {
+            if (!allData.scenarios[allData.currentScenario]) {
+                const firstKey = Object.keys(allData.scenarios)[0];
+                if (firstKey) allData.currentScenario = firstKey;
+            }
+            return allData.scenarios[allData.currentScenario];
+        }
+
+        function save() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+            } catch (e) {
+                showToast('保存容量オーバーの可能性があります');
+            }
+        }
+
+        function exportDataJson() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `sumaho_coco_backup_${Date.now()}.json`);
+            dlAnchorElem.click();
+            showToast('JSONファイルを書き出しました');
+        }
+
+        function importDataJsonPrompt() {
+            document.getElementById('jsonFileInput').click();
+        }
+
+        function handleJsonFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && parsed.scenarios && parsed.currentScenario) {
+                        if (confirm('現在のデータを上書きしてJSONを復元しますか？')) {
+                            allData = parsed;
+                            editingScenarioId = null;
+                            activeIndexId = null;
+                            save();
+                            renderAll();
+                            showToast('JSONデータを復元しました');
+                        }
+                    } else {
+                        alert('不正な形式のJSONファイルです');
+                    }
+                } catch (err) {
+                    alert('JSONファイルの読み込みに失敗しました');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function resetAllData() {
+            if (confirm('データを初期化してサンプルに戻しますか？')) {
+                localStorage.removeItem(STORAGE_KEY);
+                allData = JSON.parse(JSON.stringify(defaultData));
+                activeIndexId = null;
+                renderAll();
+                showToast('初期化しました');
+            }
+        }
+
+        function clearAllScenarios() {
+            const cur = getCur();
+            if (confirm('このシナリオの登録シナリオをすべて削除しますか？')) {
+                cur.scenariosList = [];
+                cur.sentIds = {};
+                editingScenarioId = null;
+                activeIndexId = null;
+                save();
+                renderScenarios();
+                showToast('シナリオをクリアしました');
+            }
+        }
+
+        function resetAllChecks() {
+            const cur = getCur();
+            if (Object.keys(cur.sentIds).length === 0) {
+                showToast('解除するチェックはありません');
+                return;
+            }
+            if (confirm('すべてのチェック（送信済み状態）を解除しますか？')) {
+                cur.sentIds = {};
+                save();
+                renderScenarios();
+                showToast('チェックを全解除しました');
+            }
+        }
+
         if (typeof pdfjsLib !== 'undefined') {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
+
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const name = file.name.toLowerCase();
+
+            try {
+                showToast('読み込み中...');
+                if (name.endsWith('.docx')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    document.getElementById('importPreview').value = result.value;
+                    showToast('Word(.docx)抽出完了');
+                } else if (name.endsWith('.pdf')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n\n';
+                    }
+                    document.getElementById('importPreview').value = fullText;
+                    showToast('PDF抽出完了');
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        document.getElementById('importPreview').value = evt.target.result;
+                        showToast('テキスト読込完了');
+                    };
+                    reader.readAsText(file);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('ファイル解析エラー');
+            }
+        });
+
+        function parseAndImportText() {
+            const raw = document.getElementById('importPreview').value;
+            if (!raw.trim()) return;
+            const cur = getCur();
+            const lines = raw.split(/\r?\n/).filter(l => l.trim() !== '');
+            const targetTab = cur.currentTab || cur.tabs[0] || '共通';
+            
+            lines.forEach((line, idx) => {
+                let speaker = 'KP';
+                let text = line.trim();
+                const colonMatch = line.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
+                const bracketMatch = line.match(/^【(.*?)】\s*(.*)$/);
+
+                if (colonMatch) {
+                    speaker = colonMatch ? colonMatch.toUpperCase() : 'KP';
+                    text = colonMatch || line.trim();
+                } else if (bracketMatch) {
+                    speaker = bracketMatch || 'KP';
+                    text = bracketMatch || line.trim();
+                }
+
+                cur.scenariosList.push({
+                    id: 'imp_' + Date.now() + '_' + idx,
+                    tab: targetTab,
+                    speaker: speaker,
+                    text: text
+                });
+            });
+
+            document.getElementById('importPreview').value = '';
+            document.getElementById('fileInput').value = '';
+            activeIndexId = null;
+            save();
+            renderScenarios();
+            showToast('テキスト登録完了！');
+        }
+
+        function renderScenarioSelector() {
+            const sel = document.getElementById('scenarioSelect');
+            sel.innerHTML = '';
+            Object.keys(allData.scenarios).forEach(key => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = allData.scenarios[key].title;
+                if (key === allData.currentScenario) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        function switchScenario(key) {
+            allData.currentScenario = key;
+            editingScenarioId = null;
+            activeIndexId = null;
+            save();
+            renderAll();
+        }
+
+        function addScenario() {
+            const name = prompt('新しいシナリオ名を入力してください:');
+            if (name && name.trim()) {
+                const key = 'sc_' + Date.now();
+                allData.scenarios[key] = {
+                    title: name.trim(),
+                    tabs: ['共通', 'PC1', 'KP用', '情報'],
+                    currentTab: '共通',
+                    customItems: {
+                        '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
+                        'PC1': [], 'KP用': [], '情報': []
+                    },
+                    scenariosList: [],
+                    sentIds: {}
+                };
+                allData.currentScenario = key;
+                editingScenarioId = null;
+                activeIndexId = null;
+                save();
+                renderAll();
+            }
+        }
+
+        function renderTabs() {
+            const cur = getCur();
+            const bar = document.getElementById('tabBar');
+            bar.innerHTML = '';
+            cur.tabs.forEach(tab => {
+                const item = document.createElement('div');
+                item.className = `tab-item ${tab === cur.currentTab ? 'active' : ''}`;
+                
+                const btn = document.createElement('button');
+                btn.className = 'tab-btn';
+                btn.textContent = tab;
+                btn.onclick = () => { cur.currentTab = tab; save(); renderTabs(); renderGrid(); };
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'tab-edit-mini';
+                editBtn.innerHTML = '✏️';
+                editBtn.title = 'タブ名変更・削除';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    editTab(tab);
+                };
+
+                item.appendChild(btn);
+                item.appendChild(editBtn);
+                bar.appendChild(item);
+            });
+        }
+
+        function addTab() {
+            const cur = getCur();
+            const name = prompt('追加するタブ名（例: PC2, 敵A）:');
+            if (name && name.trim()) {
+                const clean = name.trim();
+                if (!cur.tabs.includes(clean)) cur.tabs.push(clean);
+                if (!cur.customItems[clean]) cur.customItems[clean] = [];
+                cur.currentTab = clean;
+                save(); renderAll();
+            }
+        }
+
+        function editTab(oldName) {
+            const cur = getCur();
+            const action = prompt(`タブ「${oldName}」の操作:\n・名前を変更する場合は新しい名前を入力\n・「DEL」または空欄で削除`, oldName);
+            
+            if (action === null) return;
+            const newName = action.trim();
+            if (newName === '' || newName.toLowerCase() === 'del') {
+                if (cur.tabs.length <= 1) {
+                    alert('最後のタブは削除できません');
+                    return;
+                }
+                if (!confirm(`タブ「${oldName}」を削除しますか？`)) return;
+
+                cur.tabs = cur.tabs.filter(t => t !== oldName);
+                delete cur.customItems[oldName];
+                const fallbackTab = cur.tabs[0] || '共通';
+                cur.scenariosList.forEach(s => {
+                    if (s.tab === oldName) s.tab = fallbackTab;
+                });
+
+                if (cur.currentTab === oldName) {
+                    cur.currentTab = fallbackTab;
+                }
+                save();
+                renderAll();
+                showToast(`タブ「${oldName}」削除完了`);
+                return;
+            }
+
+            if (newName !== oldName) {
+                if (cur.tabs.includes(newName)) {
+                    alert('同名のタブが既に存在します');
+                    return;
+                }
+                const idx = cur.tabs.indexOf(oldName);
+                if (idx !== -1) cur.tabs[idx] = newName;
+                if (cur.customItems[oldName]) {
+                    cur.customItems[newName] = cur.customItems[oldName];
+                    delete cur.customItems[oldName];
+                }
+                cur.scenariosList.forEach(s => {
+                    if (s.tab === oldName) s.tab = newName;
+                });
+                if (cur.currentTab === oldName) {
+                    cur.currentTab = newName;
+                }
+                save();
+                renderAll();
+                showToast(`タブ名を「${newName}」に変更`);
+            }
+        }
+
+        function deleteItem(idx) {
+            const cur = getCur();
+            cur.customItems[cur.currentTab].splice(idx, 1);
+            save(); renderGrid();
+        }
+
+        window.changeItemTab = function(id, newTab) {
+            const cur = getCur();
+            const item = cur.scenariosList.find(s => s.id === id);
+            if (!item) return;
+            item.tab = newTab;
+            save();
+            renderScenarios();
+            showToast(`タブを「${newTab}」に変更`);
+        };
+
+        window.insertScenarioItemAfter = function(id) {
+            const cur = getCur();
+            const idx = cur.scenariosList.findIndex(s => s.id === id);
+            if (idx === -1) return;
+            const currentItem = cur.scenariosList[idx];
+            
+            const speaker = prompt('挿入する話者:', currentItem.speaker || 'KP');
+            if (speaker === null) return;
+            const text = prompt('挿入する本文:');
+            if (text === null || !text.trim()) return;
+            
+            const newItem = {
+                id: 'ins_' + Date.now(),
+                tab: currentItem.tab,
+                speaker: speaker.trim() || 'KP',
+                text: text
+            };
+            cur.scenariosList.splice(idx + 1, 0, newItem);
+            save();
+            renderScenarios();
+            showToast('途中に挿入しました');
+        };
+
+        // 新規目次ブロックを追加
+        window.addNewIndexBlock = function() {
+            const cur = getCur();
+            const titleInput = prompt('新しい目次名（例: 【調査フェイズ】 or 《魔力の痕跡》）:');
+            if (titleInput === null || !titleInput.trim()) return;
+            
+            const rawTitle = titleInput.trim();
+            const formattedHeading = (/^[【《].*?[】》]/.test(rawTitle)) ? rawTitle : `【${rawTitle}】`;
+
+            const speaker = prompt('話者:', 'KP');
+            if (speaker === null) return;
+            const textBody = prompt('目次項目の本文（任意、空欄可）:');
+            if (textBody === null) return;
+
+            const fullText = textBody.trim() ? `${formattedHeading}${textBody.trim()}` : formattedHeading;
+            const targetTab = cur.currentTab || cur.tabs[0] || '共通';
+
+            const newItem = {
+                id: 'idx_' + Date.now(),
+                tab: targetTab,
+                speaker: speaker.trim() || 'KP',
+                text: fullText
+            };
+
+            cur.scenariosList.push(newItem);
+            save();
+            renderScenarios();
+            showToast('新しい目次を追加しました');
+        };
+
+        window.insertUnderIndex = function(targetId) {
+            const cur = getCur();
+            const idx = cur.scenariosList.findIndex(s => s.id === targetId);
+            if (idx === -1) return;
+            
+            let insertPos = idx + 1;
+            while (insertPos < cur.scenariosList.length) {
+                const s = cur.scenariosList[insertPos];
+                const firstLine = (s.text || '').split('\n')[0].trim();
+                if (/^[【《].*?[】》]/.test(firstLine)) break;
+                insertPos++;
+            }
+
+            const currentItem = cur.scenariosList[idx];
+            const speaker = prompt('話者:', currentItem.speaker || 'KP');
+            if (speaker === null) return;
+            const text = prompt('追加する本文:');
+            if (text === null || !text.trim()) return;
+
+            const newItem = {
+                id: 'ins_' + Date.now(),
+                tab: currentItem.tab,
+                speaker: speaker.trim() || 'KP',
+                text: text
+            };
+
+            cur.scenariosList.splice(insertPos, 0, newItem);
+            save();
+            renderScenarios();
+            showToast('目次ブロック内に追加しました');
+        };
+
+        window.editScenarioItem = function(id) {
+            editingScenarioId = id;
+            renderScenarios();
+        };
+
+        window.saveInlineEdit = function(id) {
+            const cur = getCur();
+            const item = cur.scenariosList.find(s => s.id === id);
+            if (!item) return;
+            const speakerInput = document.getElementById(`edit-speaker-${id}`);
+            const textInput = document.getElementById(`edit-text-${id}`);
+            if (speakerInput && textInput) {
+                item.speaker = speakerInput.value.trim() || 'KP';
+                item.text = textInput.value;
+                save();
+                showToast('保存しました');
+            }
+            editingScenarioId = null;
+            renderScenarios();
+        };
+
+        window.cancelInlineEdit = function() {
+            editingScenarioId = null;
+            renderScenarios();
+        };
+
+        window.mergeScenarioItemNext = function(id) {
+            const cur = getCur();
+            const idx = cur.scenariosList.findIndex(s => s.id === id);
+            if (idx === -1 || idx === cur.scenariosList.length - 1) {
+                showToast('下に結合できる項目がありません');
+                return;
+            }
+            const currentItem = cur.scenariosList[idx];
+            const nextItem = cur.scenariosList[idx + 1];
+            if (!confirm(`「${currentItem.text.slice(0, 15)}...」と下の項目を結合しますか？`)) return;
+            
+            currentItem.text = currentItem.text + '\n' + nextItem.text;
+            cur.scenariosList.splice(idx + 1, 1);
+            delete cur.sentIds[nextItem.id];
+            save();
+            renderScenarios();
+            showToast('結合完了');
+        };
+
+        window.splitScenarioItem = function(id, event) {
+            const cur = getCur();
+            const item = cur.scenariosList.find(s => s.id === id);
+            if (!item) return;
+
+            if (item.text.includes('\n')) {
+                const lines = item.text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length > 1) {
+                    if (!confirm(`この項目を ${lines.length} 個の行に分割しますか？`)) return;
+                    const idx = cur.scenariosList.findIndex(s => s.id === id);
+                    const newItems = lines.map((l, i) => ({
+                        id: 'split_' + Date.now() + '_' + i,
+                        tab: item.tab,
+                        speaker: item.speaker,
+                        text: l
+                    }));
+                    cur.scenariosList.splice(idx, 1, ...newItems);
+                    delete cur.sentIds[id];
+                    save();
+                    renderScenarios();
+                    showToast('行で分割完了');
+                    return;
+                }
+            }
+            const pos = Math.floor(item.text.length / 2);
+            const idx = cur.scenariosList.findIndex(s => s.id === id);
+            const firstText = item.text.slice(0, pos);
+            const secondText = item.text.slice(pos);
+            const newItem1 = { ...item, text: firstText };
+            const newItem2 = { id: 'split_' + Date.now(), tab: item.tab, speaker: item.speaker, text: secondText };
+            cur.scenariosList.splice(idx, 1, newItem1, newItem2);
+            save();
+            renderScenarios();
+            showToast('分割完了');
+        };
+
+        window.moveScenarioItem = function(id, direction) {
+            const cur = getCur();
+            const idx = cur.scenariosList.findIndex(s => s.id === id);
+            if (idx === -1) return;
+            const targetIdx = idx + direction;
+            if (targetIdx < 0 || targetIdx >= cur.scenariosList.length) return;
+
+            const item = cur.scenariosList.splice(idx, 1)[0];
+            cur.scenariosList.splice(targetIdx, 0, item);
+            save();
+            renderScenarios();
+        };
+
+        window.deleteScenarioItem = function(id) {
+            const cur = getCur();
+            cur.scenariosList = cur.scenariosList.filter(s => s.id !== id);
+            delete cur.sentIds[id];
+            if (editingScenarioId === id) editingScenarioId = null;
+            save();
+            renderScenarios();
+        };
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = `コピー: ${msg}`;
+            t.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                t.classList.remove('show');
+            }, 1500);
+        }
+
+        function copy(text) {
+            navigator.clipboard.writeText(text).then(() => showToast(text));
+        }
+
+        function renderGrid() {
+            const cur = getCur();
+            const grid = document.getElementById('buttonGrid');
+            grid.innerHTML = '';
+            const items = cur.customItems[cur.currentTab] || [];
+            items.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'btn';
+                div.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
+                div.onclick = () => copy(item.text);
+                grid.appendChild(div);
+            });
+        }
+
+        function renderScenarioIndex(originalList) {
+            const indexBar = document.getElementById('scenarioIndexBar');
+            if (!indexBar) return;
+            indexBar.innerHTML = '';
+
+            const addMainBtn = document.createElement('button');
+            addMainBtn.className = 'index-add-main-btn';
+            addMainBtn.textContent = '+目次追加';
+            addMainBtn.title = '新しい目次項目を追加';
+            addMainBtn.onclick = () => addNewIndexBlock();
+            indexBar.appendChild(addMainBtn);
+
+            const indexItems = originalList.filter(s => {
+                const firstLine = (s.text || '').split('\n')[0].trim();
+                return /^[【《].*?[】》]/.test(firstLine);
+            });
+
+            const allBtn = document.createElement('button');
+            allBtn.className = 'scenario-action-btn scenario-index-btn';
+            allBtn.textContent = '全表示';
+            allBtn.style.background = activeIndexId === null ? 'var(--primary)' : 'var(--bg)';
+            allBtn.style.color = activeIndexId === null ? '#fff' : 'var(--text-muted)';
+            allBtn.onclick = () => {
+                activeIndexId = null;
+                renderScenarios();
+            };
+            indexBar.appendChild(allBtn);
+
+            indexItems.forEach(item => {
+                const firstLine = item.text.split('\n')[0].trim();
+                const group = document.createElement('div');
+                group.className = 'index-item-group';
+
+                const btn = document.createElement('button');
+                btn.className = 'scenario-action-btn scenario-index-btn';
+                btn.textContent = firstLine.slice(0, 10);
+                btn.title = firstLine;
+                const isSelected = activeIndexId === item.id;
+                btn.style.background = isSelected ? 'var(--primary)' : 'var(--bg)';
+                btn.style.color = isSelected ? '#fff' : 'var(--text-muted)';
+                
+                btn.onclick = () => {
+                    if (activeIndexId === item.id) {
+                        const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        activeIndexId = item.id;
+                        renderScenarios();
+                        const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                };
+
+                const addSubBtn = document.createElement('button');
+                addSubBtn.className = 'index-add-sub-btn';
+                addSubBtn.textContent = '+直下追加';
+                addSubBtn.title = 'この目次セクション内に追加';
+                addSubBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    insertUnderIndex(item.id);
+                };
+
+                group.appendChild(btn);
+                group.appendChild(addSubBtn);
+                indexBar.appendChild(group);
+            });
+        }
+
+        function renderScenarios() {
+            const cur = getCur();
+            const list = document.getElementById('scenarioList');
+            list.innerHTML = '';
+            const allScenarios = cur.scenariosList || [];
+            
+            const sentCount = allScenarios.filter(s => cur.sentIds[s.id]).length;
+            document.getElementById('scenarioProgress').textContent = `${sentCount} / ${allScenarios.length} 完了`;
+
+            const searchInput = document.getElementById('scenarioSearchInput');
+            const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+            renderScenarioIndex(allScenarios);
+
+            let filteredScenarios = allScenarios;
+
+            if (activeIndexId) {
+                const startIdx = allScenarios.findIndex(s => s.id === activeIndexId);
+                if (startIdx !== -1) {
+                    const sliced = [];
+                    for (let i = startIdx; i < allScenarios.length; i++) {
+                        const s = allScenarios[i];
+                        const isHeading = i > startIdx && /^[【《].*?[】》]/.test((s.text || '').split('\n')[0].trim());
+                        if (isHeading) break;
+                        sliced.push(s);
+                    }
+                    filteredScenarios = sliced;
+                } else {
+                    activeIndexId = null;
+                }
+            }
+
+            if (query) {
+                filteredScenarios = filteredScenarios.filter(item => {
+                    return (item.speaker && item.speaker.toLowerCase().includes(query)) ||
+                           (item.text && item.text.toLowerCase().includes(query));
+                });
+            }
+
+            if (filteredScenarios.length === 0) {
+                list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:16px;">該当する文章はありません</div>';
+                return;
+            }
+
+            filteredScenarios.forEach(item => {
+                const isSent = !!cur.sentIds[item.id];
+                const isEditing = editingScenarioId === item.id;
+                const div = document.createElement('div');
+                div.className = `scenario-item ${isSent ? 'sent' : ''} ${isEditing ? 'editing' : ''}`;
+                div.setAttribute('data-id', item.id);
+                
+                let tabOptionsHTML = cur.tabs.map(t => `<option value="${escapeHTML(t)}" ${item.tab === t ? 'selected' : ''}>${escapeHTML(t)}</option>`).join('');
+
+                if (isEditing) {
+                    div.innerHTML = `
+                        <div style="width:100%; display:flex; flex-direction:column; gap:6px;" onclick="event.stopPropagation()">
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <label style="font-size:0.65rem; color:var(--text-muted);">話者:</label>
+                                <input type="text" id="edit-speaker-${item.id}" value="${escapeAttr(item.speaker)}" style="flex:1;">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                <label style="font-size:0.65rem; color:var(--text-muted);">本文（マルチ行OK）:</label>
+                                <textarea id="edit-text-${item.id}" style="width:100%; min-height:90px; font-size:0.8rem; line-height:1.4;">${escapeHTML(item.text)}</textarea>
+                            </div>
+                            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:4px;">
+                                <button onclick="cancelInlineEdit()" style="background:var(--surface); color:var(--text-muted); border:1px solid var(--border); padding:4px 10px;">キャンセル</button>
+                                <button onclick="saveInlineEdit('${item.id}')" style="background:var(--primary); color:#fff; border:none; padding:4px 12px; font-weight:bold;">保存</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
+                        <div class="scenario-actions-top">
+                            <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
+                                ${tabOptionsHTML}
+                            </select>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')" title="この下に追加">+挿入</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}', event)" title="改行・分割">✂️分割</button>
+                            <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
+                                <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
+                                ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
+                            </div>
+                            <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
+                        </div>
+                    `;
+                    div.onclick = (e) => {
+                        if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+                        
+                        const joinedText = item.text;
+                        const payload = item.speaker === 'KP' 
+                            ? joinedText 
+                            : `${item.speaker}：${joinedText}`;
+                            
+                        cur.sentIds[item.id] = true;
+                        save();
+                        copy(payload);
+                        renderScenarios();
+                    };
+                }
+                list.appendChild(div);
+            });
+        }
+
+        window.toggleCheck = function(e, id) {
+            e.stopPropagation();
+            const cur = getCur();
+            if (cur.sentIds[id]) {
+                delete cur.sentIds[id];
+            } else {
+                cur.sentIds[id] = true;
+            }
+            save();
+            renderScenarios();
+        };
+
+        function escapeHTML(str) {
+            return String(str || '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+        }
+
+        function escapeAttr(str) {
+            return String(str || '').replace(/"/g, '&quot;');
+        }
+
+        function renderAll() {
+            try {
+                renderScenarioSelector();
+                renderTabs();
+                renderGrid();
+                renderScenarios();
+            } catch (e) {
+                console.error('Render error:', e);
+            }
+        }
+
+        renderAll();
     </script>
-    <script src="./main.js"></script>
 </body>
 </html>
