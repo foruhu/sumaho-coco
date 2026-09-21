@@ -234,6 +234,12 @@
                         </div>
                     <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
                     </div>
+                    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px;">
+    <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">📥 シナリオ一括インポート（行ごとに登録）</div>
+    <textarea id="batchText" placeholder="例:&#10;KP: 《施設情報》この施設は……&#10;PC1: 端末を眺める" style="width:100%; height:60px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
+    <button onclick="doBatchImport()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">一括追加を実行</button>
+</div>
+
                 `;
                 div.onclick = (e) => {
                     if (e.target.tagName === 'INPUT') return;
