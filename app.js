@@ -3,6 +3,20 @@ let editingScenarioId = null;
 let collapsedSentIds = {};
 let historyStack = [];
 
+function closeIndexPopover() {
+    const existing = document.getElementById('indexPopoverMenu');
+    if (existing) existing.remove();
+}
+
+if (!window._popoverGlobalListener) {
+    window._popoverGlobalListener = true;
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#indexPopoverMenu') && !e.target.classList.contains('index-unified-btn')) {
+            closeIndexPopover();
+        }
+    });
+}
+
 function pushHistory() {
     historyStack.push(JSON.parse(JSON.stringify(allData)));
     if (historyStack.length > 20) historyStack.shift();
@@ -495,7 +509,6 @@ function renderScenarioIndex(originalList) {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
-        // 鉛筆と×を1つにした統合ボタン（クリックで専用ポップアップメニュー表示）
         const unifiedBtn = document.createElement('button');
         unifiedBtn.className = 'index-unified-btn';
         unifiedBtn.textContent = '⚙';
@@ -508,19 +521,36 @@ function renderScenarioIndex(originalList) {
             popover.id = 'indexPopoverMenu';
             popover.className = 'index-popover-menu';
             
-            // 画面外にはみ出さないよう調整
             const topPos = Math.min(rect.bottom, window.innerHeight - 90);
             const leftPos = Math.max(10, rect.left - 50);
             popover.style.top = `${topPos}px`;
             popover.style.left = `${leftPos}px`;
 
-            popover.innerHTML = `
-                <button onclick="closeIndexPopover(); editIndexTitle('${item.id}')">✏️ 編集</button>
-                <button onclick="closeIndexPopover(); removeIndexStatus('${item.id}')" style="color:var(--accent-red);">✕ 解除</button>
-            `;
+            const editBtn = document.createElement('button');
+            editBtn.innerHTML = '✏️ 編集';
+            editBtn.onclick = () => {
+                closeIndexPopover();
+                editIndexTitle(item.id);
+            };
+
+            const removeBtn = document.createElement('button');
+            removeBtn.innerHTML = '✕ 解除';
+            removeBtn.style.color = 'var(--accent-red)';
+            removeBtn.onclick = () => {
+                closeIndexPopover();
+                removeIndexStatus(item.id);
+            };
+
+            popover.appendChild(editBtn);
+            popover.appendChild(removeBtn);
             document.body.appendChild(popover);
         };
 
+        group.appendChild(btn);
+        group.appendChild(unifiedBtn);
+        indexBar.appendChild(group);
+    });
+}
 
 function renderScenarios() {
     const cur = getCur();
