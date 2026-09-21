@@ -778,6 +778,14 @@ function renderAll() {
     } catch (e) {
         console.error('Render error:', e);
     }
+    
+    // 例：インデックスバー描画処理がある場合のスキップ・クリア
+const indexBar = document.getElementById('scenarioIndexBar');
+if (indexBar) {
+    indexBar.innerHTML = '';
+    indexBar.style.display = 'none';
+}
+
 }
 
 renderAll();
