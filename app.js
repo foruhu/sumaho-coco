@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'sumaho_coco_multiscenario_v18';
+const STORAGE_KEY = 'sumaho_coco_multiscenario_v19';
 let editingScenarioId = null;
 let collapsedSentIds = {};
 let historyStack = [];
@@ -495,9 +495,10 @@ function renderScenarioIndex(originalList) {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
+        // 鉛筆と×を1つにした統合ボタン（クリックで操作選択）
         const unifiedBtn = document.createElement('button');
         unifiedBtn.className = 'index-unified-btn';
-        unifiedBtn.textContent = '✎⚙';
+        unifiedBtn.textContent = '⚙';
         unifiedBtn.title = '目次操作（編集・解除）';
         unifiedBtn.onclick = (e) => {
             e.stopPropagation();
