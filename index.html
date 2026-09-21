@@ -75,13 +75,11 @@
             flex: 1;
         }
 
-        /* 2段配置に対応するため上のパディングを広めに確保 */
         .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 68px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
         .scenario-item.editing { cursor: default; border-color: var(--primary); background: #121019; }
         
-        /* 2段アクションバー */
         .scenario-actions-top { 
             position: absolute; top: 4px; right: 6px; left: 38px; 
             display: flex; flex-direction: column; gap: 3px; z-index: 2; 
@@ -161,6 +159,7 @@
             <span>📜 シナリオ・情報一覧</span>
             <span>
                 <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
+                <button onclick="deleteCheckedScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer; margin-right:4px;" title="チェック付き項目をまとめて削除">選択削除(✓付)</button>
                 <button onclick="resetAllChecks()" style="font-size:0.65rem; padding:2px 6px; color:var(--text); background:none; border:1px solid var(--border); border-radius:4px; cursor:pointer; margin-right:4px;">チェック全解除</button>
                 <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全クリア</button>
             </span>
@@ -287,6 +286,26 @@
                 renderScenarios();
                 showToast('シナリオをクリアしました');
             }
+        }
+
+        function deleteCheckedScenarios() {
+            const cur = getCur();
+            const checkedIds = Object.keys(cur.sentIds).filter(id => cur.sentIds[id]);
+            if (checkedIds.length === 0) {
+                showToast('削除対象のチェック付き項目がありません');
+                return;
+            }
+            if (!confirm(`チェックの付いた ${checkedIds.length} 件の項目を削除しますか？`)) return;
+
+            const removeSet = new Set(checkedIds);
+            cur.scenariosList = cur.scenariosList.filter(s => !removeSet.has(s.id));
+            checkedIds.forEach(id => delete cur.sentIds[id]);
+            if (editingScenarioId && removeSet.has(editingScenarioId)) {
+                editingScenarioId = null;
+            }
+            save();
+            renderScenarios();
+            showToast(`${checkedIds.length} 件を削除しました`);
         }
 
         function resetAllChecks() {
@@ -854,7 +873,7 @@
                                     ${tabOptionsHTML}
                                 </select>
                                 <button class="scenario-action-btn" onclick="event.stopPropagation(); makeItemIndexByFirstChar('${item.id}')" title="先頭文字を目次化">📌目次</button>
-                                <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')" title="この下に追加">+挿入</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')" title=" هذا 下に追加">+挿入</button>
                                 <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
                                 <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
                             </div>
