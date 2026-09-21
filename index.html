@@ -83,8 +83,10 @@
         .scenario-actions-top { position: absolute; top: 4px; right: 6px; left: 42px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
         .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
-        .scenario-del-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 5px; cursor: pointer; flex-shrink: 0; }
-        .scenario-del-btn:hover { background: #ef4444; color: #fff; }
+        
+        /* ✕削除ボタンに視認性とマージンを持たせる */
+        .scenario-del-btn { background: var(--bg); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 6px; cursor: pointer; flex-shrink: 0; margin-left: 4px; }
+        .scenario-del-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
 
         .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; }
         .text-body { user-select: text; -webkit-user-select: text; white-space: pre-wrap; }
@@ -353,7 +355,7 @@
 
                 if (bracketMatch) {
                     speaker = 'KP';
-                    content = bracketMatch || bracketMatch;
+                    content = bracketMatch + (bracketMatch ? ' ' + bracketMatch : '');
                 } else {
                     const colonMatch = text.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
                     if (colonMatch) {
@@ -561,7 +563,7 @@
                 return;
             }
 
-            const charCount = 10;
+            const charCount = 4;
             const headingText = trimmedText.slice(0, charCount);
 
             item.isIndex = true;
@@ -695,19 +697,22 @@
             renderScenarios();
         };
 
+        // 誤押し対策の確認ダイアログ付き削除関数
         window.deleteScenarioItem = function(id) {
+            if (!confirm('この項目を本当に削除しますか？')) return;
             const cur = getCur();
             cur.scenariosList = cur.scenariosList.filter(s => s.id !== id);
             delete cur.sentIds[id];
             if (editingScenarioId === id) editingScenarioId = null;
             save();
             renderScenarios();
+            showToast('削除しました');
         };
 
         let toastTimer = null;
         function showToast(msg) {
             const t = document.getElementById('toast');
-            t.textContent = `コピー: ${msg}`;
+            t.textContent = `通知: ${msg}`;
             t.classList.add('show');
             if (toastTimer) clearTimeout(toastTimer);
             toastTimer = setTimeout(() => {
