@@ -599,10 +599,20 @@
             showToast(`先頭「${headingText}」を目次登録しました`);
         };
 
-        window.deleteIndexBlockAndChildren = function(headerId) {
-            const cur = getCur();
-            const startIdx = cur.scenariosList.findIndex(s => s.id === headerId);
-            if (startIdx === -1) return;
+        // 【追加・変更】目次指定のみを解除する関数（本文は残る）
+window.removeIndexStatus = function(headerId) {
+    const cur = getCur();
+    const item = cur.scenariosList.find(s => s.id === headerId);
+    if (!item) return;
+
+    item.isIndex = false;
+    delete item.indexTitle;
+
+    save();
+    renderScenarios();
+    showToast('目次指定を解除しました');
+};
+
 
             const headerItem = cur.scenariosList[startIdx];
             const headerTitle = headerItem.indexTitle || (headerItem.text || '').slice(0, 4);
@@ -800,14 +810,16 @@
                     }
                 };
 
-                const delIndexBtn = document.createElement('button');
-                delIndexBtn.className = 'scenario-del-btn';
-                delIndexBtn.textContent = '✕';
-                delIndexBtn.title = 'この目次ブロックごと削除';
-                delIndexBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    deleteIndexBlockAndChildren(item.id);
-                };
+                // renderScenarioIndex 内の delIndexBtn 部分
+const delIndexBtn = document.createElement('button');
+delIndexBtn.className = 'scenario-del-btn';
+delIndexBtn.textContent = '✕';
+delIndexBtn.title = '目次指定を解除（テキストは保持）';
+delIndexBtn.onclick = (e) => {
+    e.stopPropagation();
+    removeIndexStatus(item.id);
+};
+
 
                 group.appendChild(btn);
                 group.appendChild(delIndexBtn);
