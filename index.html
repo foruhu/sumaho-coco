@@ -41,6 +41,12 @@
     </div>
 
     <div class="grid" id="buttonGrid"></div>
+    <div class="custom-add-bar" style="display:flex; gap:6px; margin-bottom:10px; align-items:center;">
+    <input type="text" id="customLabelInput" placeholder="ラベル (例: 目星)" style="flex:1; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem;">
+    <input type="text" id="customTextInput" placeholder="コマンド/台詞 (1d100<=70)" style="flex:1.5; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem;">
+    <button onclick="addCustomItemFromUI()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; font-weight:bold;">追加</button>
+</div>
+
 
     <div class="scenario-section">
         <div class="scenario-header">
