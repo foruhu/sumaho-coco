@@ -170,6 +170,7 @@ select {
 }
 .index-action-btn:hover { background: var(--surface-hover); color: var(--primary); }
 
+/* 鉛筆・×を1つに統合したボタン（縦書き対応） */
 .index-unified-btn {
     background: none;
     border: none;
