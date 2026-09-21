@@ -558,7 +558,7 @@
             showToast('途中に挿入しました');
         };
 
-        // 左のテキストの「最初の文字」を目次タイトルにして目次化する機能
+                 // 左のテキストの先頭から数文字を目次タイトルにして目次化する機能
         window.makeItemIndexByFirstChar = function(id) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
@@ -570,18 +570,25 @@
                 return;
             }
 
-            // 最初の1文字を取得（または先頭行の1文字など、ご要望に応じて「最初の文字」を採用）
-            const firstChar = trimmedText.charAt(0);
-            const heading = `【${firstChar}】`;
+            // 先頭の既存の見出し（【】や《》）を除去してから先頭6文字を取得
+            const bodyOnly = item.text.replace(/^[【《].*?[】》]\s*/, '').trim();
+            if (!bodyOnly) {
+                alert('有効なテキストがありません');
+                return;
+            }
 
-            // 既存の見出しプレフィックスがあれば置換、なければ先頭に付与
-            const bodyOnly = item.text.replace(/^[【《].*?[】》]\s*/, '');
-            item.text = bodyOnly ? `${heading}${bodyOnly}` : heading;
+            // 先頭から数文字（例: 6文字。必要に応じて文字数を変更可能）をタイトルに抽出
+            const charCount = 6;
+            const headingText = bodyOnly.slice(0, charCount);
+            const heading = `【${headingText}】`;
+
+            item.text = `${heading}${bodyOnly}`;
 
             save();
             renderScenarios();
-            showToast(`先頭文字「${firstChar}」を目次化しました`);
+            showToast(`先頭「${headingText}」を目次化しました`);
         };
+
 
         window.deleteIndexBlockAndChildren = function(headerId) {
             const cur = getCur();
