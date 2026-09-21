@@ -125,6 +125,7 @@
             <span>📜 シナリオ・情報一覧</span>
             <span>
                 <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
+                <button onclick="resetAllChecks()" style="font-size:0.65rem; padding:2px 6px; color:var(--text); background:none; border:1px solid var(--border); border-radius:4px; cursor:pointer; margin-right:4px;">チェック全解除</button>
                 <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全シナリオクリア</button>
             </span>
         </div>
@@ -206,6 +207,20 @@
                 save();
                 renderScenarios();
                 showToast('シナリオをクリアしました');
+            }
+        }
+
+        function resetAllChecks() {
+            const cur = getCur();
+            if (Object.keys(cur.sentIds).length === 0) {
+                showToast('解除するチェックはありません');
+                return;
+            }
+            if (confirm('すべてのチェック（送信済み状態）を解除しますか？')) {
+                cur.sentIds = {};
+                save();
+                renderScenarios();
+                showToast('チェックを全解除しました');
             }
         }
 
@@ -591,7 +606,7 @@
                 const div = document.createElement('div');
                 div.className = 'btn';
                 div.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
-                div.onclick = () => copy(item.text); // 改行変換を除去
+                div.onclick = () => copy(item.text);
                 grid.appendChild(div);
             });
         }
@@ -669,7 +684,7 @@
                     div.onclick = (e) => {
                         if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
                         
-                        const joinedText = item.text; // 改行変換を除去
+                        const joinedText = item.text;
                         const payload = item.speaker === 'KP' 
                             ? joinedText 
                             : `${item.speaker}：${joinedText}`;
