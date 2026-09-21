@@ -56,7 +56,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            width: 125px;
+            width: 110px;
             flex-shrink: 0;
             max-height: 48vh;
             overflow-y: auto;
@@ -64,21 +64,6 @@
         }
         #scenarioIndexBar::-webkit-scrollbar { width: 3px; }
         #scenarioIndexBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-        
-        .index-add-main-btn {
-            width: 100%;
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            padding: 4px;
-            text-align: center;
-            cursor: pointer;
-            margin-bottom: 4px;
-            font-weight: bold;
-        }
-        .index-add-main-btn:hover { opacity: 0.9; }
 
         .index-item-group { display: flex; align-items: center; gap: 2px; width: 100%; }
         .scenario-index-btn {
@@ -90,12 +75,12 @@
             flex: 1;
         }
 
-        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
+        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 52px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
         .scenario-item.editing { cursor: default; border-color: var(--primary); background: #121019; }
         
-        .scenario-actions-top { position: absolute; top: 4px; right: 6px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
+        .scenario-actions-top { position: absolute; top: 4px; right: 6px; left: 42px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
         .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
         .scenario-del-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 5px; cursor: pointer; flex-shrink: 0; }
@@ -168,8 +153,9 @@
             <span>📜 シナリオ・情報一覧</span>
             <span>
                 <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
+                <button onclick="addNewIndexBlock()" style="font-size:0.65rem; padding:2px 6px; color:#fff; background:var(--primary); border:none; border-radius:4px; cursor:pointer; margin-right:4px;">+目次追加</button>
                 <button onclick="resetAllChecks()" style="font-size:0.65rem; padding:2px 6px; color:var(--text); background:none; border:1px solid var(--border); border-radius:4px; cursor:pointer; margin-right:4px;">チェック全解除</button>
-                <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全シナリオクリア</button>
+                <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全クリア</button>
             </span>
         </div>
         <div class="scenario-search-box">
@@ -184,7 +170,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v13';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v14';
         let editingScenarioId = null;
         let activeIndexId = null;
 
@@ -213,7 +199,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v12') || localStorage.getItem('sumaho_coco_multiscenario_v11');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v13') || localStorage.getItem('sumaho_coco_multiscenario_v12');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -617,7 +603,6 @@
 
             const formattedHeading = (/^[【《].*?[】》]/.test(rawTitle.trim())) ? rawTitle.trim() : `【${rawTitle.trim()}】`;
             
-            // 本文側から既存の見出しプレフィックスを置換するか、そのまま連結
             const bodyOnly = item.text.replace(/^[【《].*?[】》]\s*/, '');
             item.text = bodyOnly ? `${formattedHeading}${bodyOnly}` : formattedHeading;
 
@@ -791,13 +776,6 @@
             if (!indexBar) return;
             indexBar.innerHTML = '';
 
-            const addMainBtn = document.createElement('button');
-            addMainBtn.className = 'index-add-main-btn';
-            addMainBtn.textContent = '+目次追加';
-            addMainBtn.title = '新しい目次項目を追加';
-            addMainBtn.onclick = () => addNewIndexBlock();
-            indexBar.appendChild(addMainBtn);
-
             const indexItems = originalList.filter(s => {
                 const firstLine = (s.text || '').split('\n')[0].trim();
                 return /^[【《].*?[】》]/.test(firstLine);
@@ -822,7 +800,7 @@
 
                 const btn = document.createElement('button');
                 btn.className = 'scenario-action-btn scenario-index-btn';
-                btn.textContent = firstLine.slice(0, 7);
+                btn.textContent = firstLine.slice(0, 6);
                 btn.title = firstLine;
                 const isSelected = activeIndexId === item.id;
                 btn.style.background = isSelected ? 'var(--primary)' : 'var(--bg)';
@@ -895,11 +873,6 @@
                 });
             }
 
-            if (filteredScenarios.length === 0) {
-                list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:16px;">該当する文章はありません</div>';
-                return;
-            }
-
             filteredScenarios.forEach(item => {
                 const isSent = !!cur.sentIds[item.id];
                 const isEditing = editingScenarioId === item.id;
@@ -943,7 +916,7 @@
                             <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
                         </div>
                         <div style="flex:1; min-width:0;">
-                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 250px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 170px;">
                                 <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
                                 ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                             </div>
