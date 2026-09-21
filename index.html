@@ -44,10 +44,16 @@
             padding-right: 4px;
         }
 
-        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; position: relative; }
+        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 32px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
-        .scenario-del-btn { position: absolute; top: 6px; right: 8px; font-size: 0.7rem; color: #ef4444; background: none; border: none; padding: 2px 6px; cursor: pointer; z-index: 2; }
+        
+        .scenario-actions-top { position: absolute; top: 4px; right: 6px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
+        .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; }
+        .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
+        .scenario-del-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 5px; cursor: pointer; }
+        .scenario-del-btn:hover { background: #ef4444; color: #fff; }
+
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
         
         #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0d9488; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 0.75rem; font-weight: bold; transition: transform 0.25s ease-out; z-index: 999; max-width: 90%; text-align: center; word-break: break-all; }
@@ -100,7 +106,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v3';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v4';
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -126,7 +132,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v2') || localStorage.getItem('sumaho_coco_multiscenario');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v3') || localStorage.getItem('sumaho_coco_multiscenario_v2') || localStorage.getItem('sumaho_coco_multiscenario');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -171,7 +177,6 @@
             }
         }
 
-        // PDF.js worker setup
         if (typeof pdfjsLib !== 'undefined') {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
@@ -288,7 +293,6 @@
             }
         }
 
-        // タブ描画（リネーム・削除ボタン付き）
         function renderTabs() {
             const cur = getCur();
             const bar = document.getElementById('tabBar');
@@ -329,25 +333,21 @@
             }
         }
 
-        // タブのリネーム＆削除モーダル代替（prompt）
         function editTab(oldName) {
             const cur = getCur();
             const action = prompt(`タブ「${oldName}」の操作:\n・名前を変更する場合は新しい名前を入力\n・「DEL」または空欄で削除（※中身も消えます）`, oldName);
             
-            if (action === null) return; // キャンセル
-            
+            if (action === null) return;
             const newName = action.trim();
             if (newName === '' || newName.toLowerCase() === 'del') {
-                // 削除処理
                 if (cur.tabs.length <= 1) {
                     alert('最後のタブは削除できません');
                     return;
                 }
-                if (!confirm(`タブ「${oldName}」および、そこに紐づくカスタムボタン・シナリオをすべて削除しますか？`)) return;
+                if (!confirm(`タブ「${oldName}」および紐づくデータをすべて削除しますか？`)) return;
 
                 cur.tabs = cur.tabs.filter(t => t !== oldName);
                 delete cur.customItems[oldName];
-                // 紐づくシナリオも削除
                 const targetIds = cur.scenariosList.filter(s => s.tab === oldName).map(s => s.id);
                 cur.scenariosList = cur.scenariosList.filter(s => s.tab !== oldName);
                 targetIds.forEach(id => delete cur.sentIds[id]);
@@ -366,7 +366,6 @@
                     alert('同名のタブが既に存在します');
                     return;
                 }
-                // リネーム実行
                 const idx = cur.tabs.indexOf(oldName);
                 if (idx !== -1) cur.tabs[idx] = newName;
                 if (cur.customItems[oldName]) {
@@ -403,6 +402,87 @@
             cur.customItems[cur.currentTab].splice(idx, 1);
             save(); renderGrid();
         }
+
+        // --- シナリオ項目の編集・結合・分割関数 ---
+        window.editScenarioItem = function(id) {
+            const cur = getCur();
+            const item = cur.scenariosList.find(s => s.id === id);
+            if (!item) return;
+            const newSpeaker = prompt('話者を入力:', item.speaker);
+            if (newSpeaker === null) return;
+            const newText = prompt('本文を入力:', item.text);
+            if (newText === null) return;
+            item.speaker = newSpeaker.trim() || 'KP';
+            item.text = newText;
+            save();
+            renderScenarios();
+            showToast('編集しました');
+        };
+
+        window.mergeScenarioItemNext = function(id) {
+            const cur = getCur();
+            const filtered = cur.scenariosList.filter(s => s.tab === cur.currentTab);
+            const idxInFiltered = filtered.findIndex(s => s.id === id);
+            if (idxInFiltered === -1 || idxInFiltered === filtered.length - 1) {
+                showToast('下に結合できる項目がありません');
+                return;
+            }
+            const currentItem = filtered[idxInFiltered];
+            const nextItem = filtered[idxInFiltered + 1];
+            if (!confirm(`「${currentItem.text.slice(0, 15)}...」と下の項目を結合しますか？`)) return;
+            
+            currentItem.text = currentItem.text + '\n' + nextItem.text;
+            cur.scenariosList = cur.scenariosList.filter(s => s.id !== nextItem.id);
+            delete cur.sentIds[nextItem.id];
+            save();
+            renderScenarios();
+            showToast('結合しました');
+        };
+
+        window.splitScenarioItem = function(id) {
+            const cur = getCur();
+            const item = cur.scenariosList.find(s => s.id === id);
+            if (!item) return;
+            
+            if (item.text.includes('\n')) {
+                const lines = item.text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length <= 1) {
+                    showToast('分割できる改行がありません');
+                    return;
+                }
+                if (!confirm(`この項目を ${lines.length} 個の行に分割しますか？`)) return;
+                const idx = cur.scenariosList.findIndex(s => s.id === id);
+                const newItems = lines.map((l, i) => ({
+                    id: 'split_' + Date.now() + '_' + i,
+                    tab: item.tab,
+                    speaker: item.speaker,
+                    text: l
+                }));
+                cur.scenariosList.splice(idx, 1, ...newItems);
+                delete cur.sentIds[id];
+                save();
+                renderScenarios();
+                showToast('行で分割しました');
+            } else {
+                const mid = Math.floor(item.text.length / 2);
+                const posStr = prompt(`何文字目で分割しますか？（0〜${item.text.length}）`, mid);
+                if (posStr === null) return;
+                const pos = parseInt(posStr, 10);
+                if (isNaN(pos) || pos <= 0 || pos >= item.text.length) {
+                    showToast('位置が無効です');
+                    return;
+                }
+                const idx = cur.scenariosList.findIndex(s => s.id === id);
+                const firstText = item.text.slice(0, pos);
+                const secondText = item.text.slice(pos);
+                const newItem1 = { ...item, text: firstText };
+                const newItem2 = { id: 'split_' + Date.now(), tab: item.tab, speaker: item.speaker, text: secondText };
+                cur.scenariosList.splice(idx, 1, newItem1, newItem2);
+                save();
+                renderScenarios();
+                showToast('分割しました');
+            }
+        };
 
         window.deleteScenarioItem = function(id) {
             const cur = getCur();
@@ -457,13 +537,18 @@
                 div.className = `scenario-item ${isSent ? 'sent' : ''}`;
                 div.innerHTML = `
                     <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
-                    <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')">✕削除</button>
-                    <div style="flex:1; min-width:0; padding-right:36px;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
+                    <div class="scenario-actions-top">
+                        <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
+                        <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
+                        <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}')" title="分割">✂️分割</button>
+                        <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 140px;">
                             <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
-                            ${isSent ? '<span style="color:#34d399; margin-right:32px;">✓ 送信済み</span>' : ''}
+                            ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                         </div>
-                    <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
+                        <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
                     </div>
                 `;
                 div.onclick = (e) => {
