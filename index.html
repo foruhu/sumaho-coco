@@ -16,7 +16,7 @@
         .tab-btn { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
         .tab-btn.active { background: var(--primary); color: #fff; font-weight: bold; border-color: var(--primary); }
         .add-box { display: flex; gap: 4px; margin-bottom: 12px; }
-        input, button, select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; box-sizing: border-box; }
+        input, button, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; box-sizing: border-box; }
         .add-box input:nth-child(1) { flex: 0.35; }
         .add-box input:nth-child(2) { flex: 0.65; }
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
@@ -24,6 +24,7 @@
         .btn:active { background: #27272a; }
         .del-btn { position: absolute; top: 2px; right: 4px; font-size: 0.6rem; color: #ef4444; background: none; border: none; padding: 2px 4px; cursor: pointer; }
         
+        .import-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
         .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
         .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); }
         .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; }
@@ -46,6 +47,14 @@
     
     <div class="tab-bar" id="tabBar"></div>
 
+    <!-- ファイル読込・テキスト出力＆登録セクション -->
+    <div class="import-section">
+        <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">📂 ファイル読込（Word/TXT等テキスト抽出して登録）</div>
+        <input type="file" id="fileInput" accept=".txt,.json,.csv,.md" style="width:100%; margin-bottom:6px; font-size:0.7rem;">
+        <textarea id="importPreview" placeholder="ここに読み込んだテキスト、または直接ペーストした文章を解析・登録します" style="width:100%; height:55px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
+        <button onclick="parseAndImportText()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">抽出テキストを現在タブに登録</button>
+    </div>
+
     <div class="add-box">
         <input type="text" id="labelInput" placeholder="ラベル (例: 目星)">
         <input type="text" id="textInput" placeholder="コマンド/台詞 (1d100<=70 目星)">
@@ -65,7 +74,6 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        // マルチシナリオ対応のルート構造
         let allData = JSON.parse(localStorage.getItem('sumaho_coco_multiscenario')) || {
             currentScenario: 'sample_scenario',
             scenarios: {
@@ -81,10 +89,7 @@
                         '描写': []
                     },
                     scenariosList: [
-                        { id: 's1', tab: '情報', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' },
-                        { id: 's2', tab: '情報', speaker: 'KP', text: '「財団」は、現実ではあり得ないような異常存在を確保・収容する超国家的組織である。' },
-                        { id: 's3', tab: 'info', speaker: 'KP', text: 'この施設では、いずれも異常存在に分類される 6 種類の生命体と、3 種類の物体を収容している……' },
-                        { id: 's4', tab: 'PC1', speaker: 'PC1', text: '端末の画面を凝視し、記述された内容に息を呑む。' }
+                        { id: 's1', tab: '情報', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' }
                     ],
                     sentIds: {}
                 }
@@ -97,6 +102,53 @@
 
         function save() {
             localStorage.setItem('sumaho_coco_multiscenario', JSON.stringify(allData));
+        }
+
+        // ファイル読込イベント
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                document.getElementById('importPreview').value = evt.target.result;
+                showToast('ファイルを読み込みました');
+            };
+            reader.readAsText(file);
+        });
+
+        function parseAndImportText() {
+            const raw = document.getElementById('importPreview').value;
+            if (!raw.trim()) return;
+            const cur = getCur();
+            const lines = raw.split(/\r?\n/).filter(l => l.trim() !== '');
+            
+            lines.forEach((line, idx) => {
+                let speaker = 'KP';
+                let text = line.trim();
+                const colonMatch = line.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
+                const bracketMatch = line.match(/^【(.*?)】\s*(.*)$/);
+
+                if (colonMatch) {
+                    speaker = colonMatch.toUpperCase();
+                    text = colonMatch;
+                } else if (bracketMatch) {
+                    speaker = bracketMatch;
+                    text = bracketMatch;
+                }
+
+                cur.scenariosList.push({
+                    id: 'imp_' + Date.now() + '_' + idx,
+                    tab: cur.currentTab,
+                    speaker: speaker,
+                    text: text
+                });
+            });
+
+            document.getElementById('importPreview').value = '';
+            document.getElementById('fileInput').value = '';
+            save();
+            renderScenarios();
+            showToast('テキストを登録しました！');
         }
 
         function renderScenarioSelector() {
@@ -118,7 +170,7 @@
         }
 
         function addScenario() {
-            const name = prompt('新しいシナリオ名を入力してください（例: 異界からの災雷）:');
+            const name = prompt('新しいシナリオ名を入力してください:');
             if (name && name.trim()) {
                 const key = 'sc_' + Date.now();
                 allData.scenarios[key] = {
@@ -234,12 +286,6 @@
                         </div>
                     <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
                     </div>
-                    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px;">
-    <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">📥 シナリオ一括インポート（行ごとに登録）</div>
-    <textarea id="batchText" placeholder="例:&#10;KP: 《施設情報》この施設は……&#10;PC1: 端末を眺める" style="width:100%; height:60px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
-    <button onclick="doBatchImport()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">一括追加を実行</button>
-</div>
-
                 `;
                 div.onclick = (e) => {
                     if (e.target.tagName === 'INPUT') return;
@@ -275,42 +321,6 @@
             renderGrid();
             renderScenarios();
         }
-        
-        function doBatchImport() {
-    const raw = document.getElementById('batchText').value;
-    if (!raw.trim()) return;
-    const cur = getCur();
-    const lines = raw.split(/\r?\n/).filter(l => l.trim() !== '');
-    
-    lines.forEach((line, idx) => {
-        let speaker = 'KP';
-        let text = line.trim();
-        // 「PC1: ...」「KP：...」「【PC1】...」の簡易パース
-        const colonMatch = line.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
-        const bracketMatch = line.match(/^【(.*?)】\s*(.*)$/);
-
-        if (colonMatch) {
-            speaker = colonMatch.toUpperCase();
-            text = colonMatch;
-        } else if (bracketMatch) {
-            speaker = bracketMatch;
-            text = bracketMatch;
-        }
-
-        cur.scenariosList.push({
-            id: 'imp_' + Date.now() + '_' + idx,
-            tab: cur.currentTab,
-            speaker: speaker,
-            text: text
-        });
-    });
-
-    document.getElementById('batchText').value = '';
-    save();
-    renderScenarios();
-    showToast('一括インポート完了！');
-}
-
 
         renderAll();
     </script>
