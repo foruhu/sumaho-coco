@@ -46,7 +46,7 @@
             padding-right: 4px;
         }
 
-        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 32px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; position: relative; }
+        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
         
@@ -113,7 +113,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v7';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v8';
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -139,7 +139,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v6') || localStorage.getItem('sumaho_coco_multiscenario_v5');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v7') || localStorage.getItem('sumaho_coco_multiscenario_v6');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -526,6 +526,19 @@
             showToast('分割完了');
         };
 
+        window.moveScenarioItem = function(id, direction) {
+            const cur = getCur();
+            const idx = cur.scenariosList.findIndex(s => s.id === id);
+            if (idx === -1) return;
+            const targetIdx = idx + direction;
+            if (targetIdx < 0 || targetIdx >= cur.scenariosList.length) return;
+
+            const item = cur.scenariosList.splice(idx, 1)[0];
+            cur.scenariosList.splice(targetIdx, 0, item);
+            save();
+            renderScenarios();
+        };
+
         window.deleteScenarioItem = function(id) {
             const cur = getCur();
             cur.scenariosList = cur.scenariosList.filter(s => s.id !== id);
@@ -592,13 +605,15 @@
                         <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
                             ${tabOptionsHTML}
                         </select>
+                        <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
+                        <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}', event)" title="選択・タップ位置で分割">✂️分割</button>
                         <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
                     </div>
                     <div style="flex:1; min-width:0;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 180px;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
                             <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
                             ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                         </div>
