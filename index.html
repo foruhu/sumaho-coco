@@ -61,7 +61,7 @@
 
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
         
-        #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0d9488; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 0.75rem; font-weight: bold; transition: transform 0.25s ease-out; z-index: 999; max-width: 90%; text-align: center; word-break: break-all; }
+        #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0d9488; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 0.75rem; font-weight: bold; transition: transform 0.25s ease-out; z-index: 999; max-width: 90%; text-align: center; word-break: break-all; pointer-events: none; }
         #toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
@@ -101,7 +101,7 @@
 
     <div class="scenario-section">
         <div class="scenario-header">
-            <span>📜 シナリオ・情報一覧（タップ位置分割対応）</span>
+            <span>📜 シナリオ・情報一覧</span>
             <span>
                 <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
                 <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全シナリオクリア</button>
@@ -113,7 +113,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v6';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v7';
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -139,7 +139,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v5') || localStorage.getItem('sumaho_coco_multiscenario_v4');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v6') || localStorage.getItem('sumaho_coco_multiscenario_v5');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -198,7 +198,7 @@
                     const arrayBuffer = await file.arrayBuffer();
                     const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
                     document.getElementById('importPreview').value = result.value;
-                    showToast('Word(.docx)を抽出しました');
+                    showToast('Word(.docx)抽出完了');
                 } else if (name.endsWith('.pdf')) {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -210,12 +210,12 @@
                         fullText += pageText + '\n\n';
                     }
                     document.getElementById('importPreview').value = fullText;
-                    showToast('PDFを抽出しました');
+                    showToast('PDF抽出完了');
                 } else {
                     const reader = new FileReader();
                     reader.onload = function(evt) {
                         document.getElementById('importPreview').value = evt.target.result;
-                        showToast('テキストを読み込みました');
+                        showToast('テキスト読込完了');
                     };
                     reader.readAsText(file);
                 }
@@ -258,7 +258,7 @@
             document.getElementById('fileInput').value = '';
             save();
             renderScenarios();
-            showToast('テキストを登録しました！');
+            showToast('テキスト登録完了！');
         }
 
         function renderScenarioSelector() {
@@ -381,7 +381,7 @@
                 }
                 save();
                 renderAll();
-                showToast(`タブ「${oldName}」を削除しました`);
+                showToast(`タブ「${oldName}」削除完了`);
                 return;
             }
 
@@ -404,7 +404,7 @@
                 }
                 save();
                 renderAll();
-                showToast(`タブ名を「${newName}」に変更しました`);
+                showToast(`タブ名を「${newName}」に変更`);
             }
         }
 
@@ -448,7 +448,7 @@
             item.text = newText;
             save();
             renderScenarios();
-            showToast('編集しました');
+            showToast('編集完了');
         };
 
         window.mergeScenarioItemNext = function(id) {
@@ -467,30 +467,20 @@
             delete cur.sentIds[nextItem.id];
             save();
             renderScenarios();
-            showToast('結合しました');
+            showToast('結合完了');
         };
 
-        // --- タップ位置／選択範囲での分割ロジック ---
         window.splitScenarioItem = function(id, event) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
             if (!item) return;
 
-            // 改行がある場合は従来どおり行分割を優先するか、選択位置を確認
             const sel = window.getSelection();
             let pos = -1;
-
-            if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-                // 選択範囲がある場合その終了位置／開始位置を適用できるかチェック
-            }
-
-            // タップ/クリック位置、または「該当テキスト要素上での選択位置・または直近タップ位置」を取得
-            // 該当DOM要素を探す
             const bodyEl = document.querySelector(`[data-id="${id}"] .text-body`);
             if (bodyEl && sel && sel.rangeCount > 0) {
                 const range = sel.getRangeAt(0);
                 if (bodyEl.contains(range.startContainer)) {
-                    // range.startOffset を文字数として累積算出（シンプルな単一テキストノード想定、複数ノードなら調整）
                     try {
                         const preRange = document.createRange();
                         preRange.selectNodeContents(bodyEl);
@@ -502,8 +492,6 @@
                 }
             }
 
-            // もしカーソル選択やハイライトが取れなかった場合、改行があれば改行分割、なければ「どこで分けるか」をタップ位置（座標）から推定、あるいは簡易選択プロンプトではなく「タップ位置の取得ガイド / 改行分割」にフォールバック、またはクリック位置X座標から概算位置を計算。
-            // ※スマホで実用的な「タップ位置指定」：もし改行が含まれていれば行分割、1行の場合でカーソルが選択されていない場合は、その場でテキストをタップ（選択）して「✂️分割」を押すと選択位置で割れるようにする。未選択のときは「文字上をタップして文字を選択するか、改行で分割してください」または簡易フォールバック
             if (pos <= 0 || pos >= item.text.length) {
                 if (item.text.includes('\n')) {
                     const lines = item.text.split(/\r?\n/).filter(l => l.trim() !== '');
@@ -520,14 +508,11 @@
                         delete cur.sentIds[id];
                         save();
                         renderScenarios();
-                        showToast('行で分割しました');
+                        showToast('行で分割完了');
                         return;
                     }
                 }
-                
-                // 選択・カーソル位置がない場合のフォールバック（中央、あるいはクリック/タップ座標比率換算）
-                const mid = Math.floor(item.text.length / 2);
-                pos = mid;
+                pos = Math.floor(item.text.length / 2);
             }
 
             const idx = cur.scenariosList.findIndex(s => s.id === id);
@@ -538,7 +523,7 @@
             cur.scenariosList.splice(idx, 1, newItem1, newItem2);
             save();
             renderScenarios();
-            showToast('タップ/選択位置で分割しました');
+            showToast('分割完了');
         };
 
         window.deleteScenarioItem = function(id) {
@@ -549,11 +534,16 @@
             renderScenarios();
         }
 
+        // --- 一定時間で確実に消えるトースト制御（連打対策付き） ---
+        let toastTimer = null;
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.textContent = `コピー: ${msg}`;
             t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2000);
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                t.classList.remove('show');
+            }, 1500);
         }
 
         function copy(text) {
@@ -569,7 +559,7 @@
                 const div = document.createElement('div');
                 div.className = 'btn';
                 div.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
-                div.onclick = () => copy(item.text);
+                div.onclick = () => copy(item.text.replace(/\r?\n/g, ' '));
                 grid.appendChild(div);
             });
         }
@@ -617,7 +607,8 @@
                 `;
                 div.onclick = (e) => {
                     if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
-                    const payload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
+                    const rawPayload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
+                    const payload = rawPayload.replace(/\r?\n/g, ' '); // 横長化（改行を半角スペースに）
                     cur.sentIds[item.id] = true;
                     save();
                     copy(payload);
