@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sumaho-coco セッション支援</title>
+    <title>Sumaho-coco セッション支援（完全版）</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -56,7 +56,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            width: 110px;
+            width: 125px;
             flex-shrink: 0;
             max-height: 48vh;
             overflow-y: auto;
@@ -80,9 +80,8 @@
         }
         .index-add-main-btn:hover { opacity: 0.9; }
 
-        .index-item-group { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+        .index-item-group { display: flex; align-items: center; gap: 2px; width: 100%; }
         .scenario-index-btn {
-            width: 100%;
             text-align: left;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -90,15 +89,14 @@
             padding: 4px 6px;
         }
         .index-add-sub-btn {
-            width: 100%;
             background: var(--bg);
             border: 1px dashed var(--border);
             border-radius: 4px;
             color: var(--text-muted);
             font-size: 0.55rem;
-            padding: 2px;
-            text-align: center;
+            padding: 2px 4px;
             cursor: pointer;
+            flex-shrink: 0;
         }
         .index-add-sub-btn:hover { color: var(--text); border-color: var(--primary); background: #121019; }
 
@@ -110,7 +108,7 @@
         .scenario-actions-top { position: absolute; top: 4px; right: 6px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
         .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
-        .scenario-del-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 5px; cursor: pointer; }
+        .scenario-del-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 5px; cursor: pointer; flex-shrink: 0; }
         .scenario-del-btn:hover { background: #ef4444; color: #fff; }
 
         .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; }
@@ -196,7 +194,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v11';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v12';
         let editingScenarioId = null;
         let activeIndexId = null;
 
@@ -225,7 +223,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v10') || localStorage.getItem('sumaho_coco_multiscenario_v9');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v11') || localStorage.getItem('sumaho_coco_multiscenario_v10');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -376,24 +374,29 @@
             const targetTab = cur.currentTab || cur.tabs[0] || '共通';
             
             lines.forEach((line, idx) => {
-                let speaker = 'KP';
-                let text = line.trim();
-                const colonMatch = line.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
-                const bracketMatch = line.match(/^【(.*?)】\s*(.*)$/);
+                const text = line.trim();
+                const bracketMatch = text.match(/^([【《].*?[】》])\s*(.*)$/);
 
-                if (colonMatch) {
-                    speaker = colonMatch ? colonMatch.toUpperCase() : 'KP';
-                    text = colonMatch || line.trim();
-                } else if (bracketMatch) {
-                    speaker = bracketMatch || 'KP';
-                    text = bracketMatch || line.trim();
+                let speaker = 'KP';
+                let content = text;
+
+                if (bracketMatch) {
+                    speaker = 'KP';
+                    content = text;
+                } else {
+                    const colonMatch = text.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
+                    if (colonMatch) {
+                        const sp = colonMatch.toUpperCase();
+                        speaker = sp === 'GM' ? 'KP' : sp;
+                        content = colonMatch;
+                    }
                 }
 
                 cur.scenariosList.push({
                     id: 'imp_' + Date.now() + '_' + idx,
                     tab: targetTab,
                     speaker: speaker,
-                    text: text
+                    text: content
                 });
             });
 
@@ -402,7 +405,7 @@
             activeIndexId = null;
             save();
             renderScenarios();
-            showToast('テキスト登録完了！');
+            showToast('テキスト・目次登録完了！');
         }
 
         function renderScenarioSelector() {
@@ -579,7 +582,6 @@
             showToast('途中に挿入しました');
         };
 
-        // 新規目次ブロックを追加
         window.addNewIndexBlock = function() {
             const cur = getCur();
             const titleInput = prompt('新しい目次名（例: 【調査フェイズ】 or 《魔力の痕跡》）:');
@@ -639,6 +641,34 @@
             save();
             renderScenarios();
             showToast('目次ブロック内に追加しました');
+        };
+
+        window.deleteIndexBlockAndChildren = function(headerId) {
+            const cur = getCur();
+            const startIdx = cur.scenariosList.findIndex(s => s.id === headerId);
+            if (startIdx === -1) return;
+
+            const headerItem = cur.scenariosList[startIdx];
+            const headerTitle = headerItem.text.split('\n')[0];
+
+            if (!confirm(`目次「${headerTitle}」およびその配下の項目をすべて削除しますか？`)) return;
+
+            let deleteCount = 1;
+            for (let i = startIdx + 1; i < cur.scenariosList.length; i++) {
+                const s = cur.scenariosList[i];
+                const firstLine = (s.text || '').split('\n')[0].trim();
+                if (/^[【《].*?[】》]/.test(firstLine)) break;
+                deleteCount++;
+            }
+
+            const removedIds = cur.scenariosList.slice(startIdx, startIdx + deleteCount).map(s => s.id);
+            removedIds.forEach(id => delete cur.sentIds[id]);
+
+            cur.scenariosList.splice(startIdx, deleteCount);
+            if (activeIndexId === headerId) activeIndexId = null;
+            save();
+            renderScenarios();
+            showToast('目次ブロックを削除しました');
         };
 
         window.editScenarioItem = function(id) {
@@ -795,6 +825,7 @@
             allBtn.textContent = '全表示';
             allBtn.style.background = activeIndexId === null ? 'var(--primary)' : 'var(--bg)';
             allBtn.style.color = activeIndexId === null ? '#fff' : 'var(--text-muted)';
+            allBtn.style.width = '100%';
             allBtn.onclick = () => {
                 activeIndexId = null;
                 renderScenarios();
@@ -808,19 +839,21 @@
 
                 const btn = document.createElement('button');
                 btn.className = 'scenario-action-btn scenario-index-btn';
-                btn.textContent = firstLine.slice(0, 10);
+                btn.textContent = firstLine.slice(0, 7);
                 btn.title = firstLine;
                 const isSelected = activeIndexId === item.id;
                 btn.style.background = isSelected ? 'var(--primary)' : 'var(--bg)';
                 btn.style.color = isSelected ? '#fff' : 'var(--text-muted)';
+                btn.style.flex = '1';
                 
                 btn.onclick = () => {
                     if (activeIndexId === item.id) {
-                        const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        activeIndexId = null;
                     } else {
                         activeIndexId = item.id;
-                        renderScenarios();
+                    }
+                    renderScenarios();
+                    if (activeIndexId) {
                         const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
                         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
@@ -828,15 +861,25 @@
 
                 const addSubBtn = document.createElement('button');
                 addSubBtn.className = 'index-add-sub-btn';
-                addSubBtn.textContent = '+直下追加';
+                addSubBtn.textContent = '+';
                 addSubBtn.title = 'この目次セクション内に追加';
                 addSubBtn.onclick = (e) => {
                     e.stopPropagation();
                     insertUnderIndex(item.id);
                 };
 
+                const delIndexBtn = document.createElement('button');
+                delIndexBtn.className = 'scenario-del-btn';
+                delIndexBtn.textContent = '✕';
+                delIndexBtn.title = 'この目次ブロックごと削除';
+                delIndexBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteIndexBlockAndChildren(item.id);
+                };
+
                 group.appendChild(btn);
                 group.appendChild(addSubBtn);
+                group.appendChild(delIndexBtn);
                 indexBar.appendChild(group);
             });
         }
