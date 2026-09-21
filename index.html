@@ -35,14 +35,41 @@
 
         .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
         .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px; }
-        .scenario-search-box { width: 100%; margin-bottom: 6px; }
+        .scenario-search-box { width: 100%; margin-bottom: 8px; }
         .scenario-search-box input { width: 100%; font-size: 0.75rem; }
         
-        #scenarioIndexBar { display: flex; gap: 4px; overflow-x: auto; padding: 4px 0; margin-bottom: 8px; font-size: 0.7rem; flex-shrink: 0; align-items: center; }
-        #scenarioIndexBar::-webkit-scrollbar { height: 4px; }
+        /* 左右分割レイアウトのコンテナ */
+        .scenario-body-container {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        /* 左側目次バー（縦積み） */
+        #scenarioIndexBar {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 110px;
+            flex-shrink: 0;
+            max-height: 48vh;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+        #scenarioIndexBar::-webkit-scrollbar { width: 3px; }
         #scenarioIndexBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        #scenarioIndexBar .scenario-action-btn {
+            width: 100%;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 4px 6px;
+        }
 
         #scenarioList {
+            flex: 1;
+            min-width: 0;
             max-height: 48vh;
             overflow-y: auto;
             padding-right: 4px;
@@ -133,9 +160,11 @@
         <div class="scenario-search-box">
             <input type="text" id="scenarioSearchInput" placeholder="🔍 話者・本文で検索..." oninput="renderScenarios()">
         </div>
-        <!-- 目次ジャンプ・フィルターバー -->
-        <div id="scenarioIndexBar"></div>
-        <div id="scenarioList"></div>
+        <!-- 左右分割コンテナ：左に目次バー、右にリスト -->
+        <div class="scenario-body-container">
+            <div id="scenarioIndexBar"></div>
+            <div id="scenarioList"></div>
+        </div>
     </div>
 
     <div id="toast">コピーしました！</div>
@@ -688,7 +717,7 @@
                 const firstLine = item.text.split('\n')[0].trim();
                 const btn = document.createElement('button');
                 btn.className = 'scenario-action-btn';
-                btn.textContent = firstLine.slice(0, 14);
+                btn.textContent = firstLine.slice(0, 10);
                 btn.title = firstLine;
                 const isSelected = activeIndexId === item.id;
                 btn.style.background = isSelected ? 'var(--primary)' : 'var(--bg)';
@@ -721,7 +750,7 @@
             const searchInput = document.getElementById('scenarioSearchInput');
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-            // 目次バー描画
+            // 左側目次バー描画
             renderScenarioIndex(allScenarios);
 
             // フィルタ適用
@@ -799,7 +828,7 @@
                             <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
                         </div>
                         <div style="flex:1; min-width:0;">
-                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 250px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
                                 <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
                                 ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                             </div>
