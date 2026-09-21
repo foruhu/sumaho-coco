@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sumaho-coco 完全版（改行・折り畳み・スクロール目次対応）</title>
+    <title>Sumaho-coco 完全版（目次横書き・改行・折り畳み・スクロール対応）</title>
     <!-- Mammoth & PDF.js for import -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -104,7 +104,7 @@
         }
         .del-btn { background: none; border: none; color: #ef4444; font-size: 0.65rem; cursor: pointer; }
 
-        /* 目次バーの横スクロール・カツカツ感解消調整 */
+        /* 目次バーの横スクロール・横書き調整 */
         .index-bar {
             display: flex;
             overflow-x: auto;
@@ -133,7 +133,7 @@
             overflow: hidden;
             flex-shrink: 0;
         }
-        .scenario-action-btn { background: none; border: none; color: var(--text); padding: 4px 8px; font-size: 0.65rem; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .scenario-action-btn { background: none; border: none; color: var(--text); padding: 4px 8px; font-size: 0.65rem; cursor: pointer; white-space: nowrap; flex-shrink: 0; writing-mode: horizontal-tb; }
         .scenario-del-btn { background: none; border: none; color: #ef4444; padding: 4px 6px; font-size: 0.65rem; cursor: pointer; flex-shrink: 0; }
 
         .scenario-item.sent { opacity: 0.75; }
