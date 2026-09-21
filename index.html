@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sumaho-coco セッション支援</title>
+    <!-- PDF.js & Mammoth.js (Word/PDFパース用CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         :root {
             --bg: #09090b; --surface: #18181b; --primary: #9333ea; --accent: #10b981; --text: #f4f4f5; --text-muted: #a1a1aa; --border: #27272a;
@@ -47,11 +50,11 @@
     
     <div class="tab-bar" id="tabBar"></div>
 
-    <!-- ファイル読込・テキスト出力＆登録セクション -->
+    <!-- ファイル読込・テキスト出力＆登録セクション (PDF/Word/TXT対応) -->
     <div class="import-section">
-        <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">📂 ファイル読込（Word/TXT等テキスト抽出して登録）</div>
-        <input type="file" id="fileInput" accept=".txt,.json,.csv,.md" style="width:100%; margin-bottom:6px; font-size:0.7rem;">
-        <textarea id="importPreview" placeholder="ここに読み込んだテキスト、または直接ペーストした文章を解析・登録します" style="width:100%; height:55px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
+        <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">📂 ファイル読込（PDF / Word(.docx) / TXT抽出）</div>
+        <input type="file" id="fileInput" accept=".txt,.json,.csv,.md,.pdf,.docx" style="width:100%; margin-bottom:6px; font-size:0.7rem;">
+        <textarea id="importPreview" placeholder="ここに抽出されたテキスト、または直接ペーストした文章を解析・登録します" style="width:100%; height:55px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
         <button onclick="parseAndImportText()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">抽出テキストを現在タブに登録</button>
     </div>
 
@@ -104,16 +107,48 @@
             localStorage.setItem('sumaho_coco_multiscenario', JSON.stringify(allData));
         }
 
-        // ファイル読込イベント
-        document.getElementById('fileInput').addEventListener('change', function(e) {
+        // PDF.js worker setup
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // ファイル読込イベント (TXT / DOCX / PDF対応)
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                document.getElementById('importPreview').value = evt.target.result;
-                showToast('ファイルを読み込みました');
-            };
-            reader.readAsText(file);
+            const name = file.name.toLowerCase();
+
+            try {
+                showToast('読み込み中...');
+                if (name.endsWith('.docx')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    document.getElementById('importPreview').value = result.value;
+                    showToast('Word(.docx)を抽出しました');
+                } else if (name.endsWith('.pdf')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n\n';
+                    }
+                    document.getElementById('importPreview').value = fullText;
+                    showToast('PDFを抽出しました');
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        document.getElementById('importPreview').value = evt.target.result;
+                        showToast('テキストを読み込みました');
+                    };
+                    reader.readAsText(file);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('ファイル解析エラー');
+            }
         });
 
         function parseAndImportText() {
@@ -211,6 +246,7 @@
                 if (!cur.tabs.includes(clean)) cur.tabs.push(clean);
                 if (!cur.customItems[clean]) cur.customItems[clean] = [];
                 cur.currentTab = clean;
+/********************/
                 save(); renderAll();
             }
         }
