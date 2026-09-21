@@ -495,21 +495,23 @@ function renderScenarioIndex(originalList) {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
-        const editBtn = document.createElement('button');
-        editBtn.className = 'index-edit-tag';
-        editBtn.textContent = '✎';
-        editBtn.title = '縦書き目次名を編集';
-        editBtn.onclick = (e) => { e.stopPropagation(); editIndexTitle(item.id); };
-
-        const delIndexBtn = document.createElement('button');
-        delIndexBtn.className = 'index-del-btn';
-        delIndexBtn.textContent = '✕';
-        delIndexBtn.title = '目次ピン留め解除';
-        delIndexBtn.onclick = (e) => { e.stopPropagation(); removeIndexStatus(item.id); };
+        const unifiedBtn = document.createElement('button');
+        unifiedBtn.className = 'index-unified-btn';
+        unifiedBtn.textContent = '✎⚙';
+        unifiedBtn.title = '目次操作（編集・解除）';
+        unifiedBtn.onclick = (e) => {
+            e.stopPropagation();
+            const choice = prompt(`目次「${titleText}」の操作:\n1 or 空白: 目次名義を編集\ndel: 目次ピン留めを解除`, '1');
+            if (choice === null) return;
+            if (choice.trim().toLowerCase() === 'del' || choice.trim() === '×') {
+                removeIndexStatus(item.id);
+            } else {
+                editIndexTitle(item.id);
+            }
+        };
 
         group.appendChild(btn);
-        group.appendChild(editBtn);
-        group.appendChild(delIndexBtn);
+        group.appendChild(unifiedBtn);
         indexBar.appendChild(group);
     });
 }
