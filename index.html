@@ -49,6 +49,7 @@
         .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 48px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
+        .scenario-item.editing { cursor: default; border-color: var(--primary); background: #121019; }
         
         .scenario-actions-top { position: absolute; top: 4px; right: 6px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
         .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; }
@@ -57,7 +58,7 @@
         .scenario-del-btn:hover { background: #ef4444; color: #fff; }
 
         .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; }
-        .text-body { user-select: text; -webkit-user-select: text; }
+        .text-body { user-select: text; -webkit-user-select: text; white-space: pre-wrap; }
 
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
         
@@ -113,7 +114,8 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v8';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v9';
+        let editingScenarioId = null;
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -139,7 +141,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v7') || localStorage.getItem('sumaho_coco_multiscenario_v6');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v8') || localStorage.getItem('sumaho_coco_multiscenario_v7');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -177,6 +179,7 @@
             if (confirm('このシナリオの登録シナリオをすべて削除しますか？')) {
                 cur.scenariosList = [];
                 cur.sentIds = {};
+                editingScenarioId = null;
                 save();
                 renderScenarios();
                 showToast('シナリオをクリアしました');
@@ -275,6 +278,7 @@
 
         function switchScenario(key) {
             allData.currentScenario = key;
+            editingScenarioId = null;
             save();
             renderAll();
         }
@@ -295,6 +299,7 @@
                     sentIds: {}
                 };
                 allData.currentScenario = key;
+                editingScenarioId = null;
                 save();
                 renderAll();
             }
@@ -436,19 +441,31 @@
             showToast(`タブを「${newTab}」に変更`);
         };
 
+        // --- インライン編集モード切替・保存・キャンセル ---
         window.editScenarioItem = function(id) {
+            editingScenarioId = id;
+            renderScenarios();
+        };
+
+        window.saveInlineEdit = function(id) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
             if (!item) return;
-            const newSpeaker = prompt('話者を入力:', item.speaker);
-            if (newSpeaker === null) return;
-            const newText = prompt('本文を入力:', item.text);
-            if (newText === null) return;
-            item.speaker = newSpeaker.trim() || 'KP';
-            item.text = newText;
-            save();
+            const speakerInput = document.getElementById(`edit-speaker-${id}`);
+            const textInput = document.getElementById(`edit-text-${id}`);
+            if (speakerInput && textInput) {
+                item.speaker = speakerInput.value.trim() || 'KP';
+                item.text = textInput.value;
+                save();
+                showToast('保存しました');
+            }
+            editingScenarioId = null;
             renderScenarios();
-            showToast('編集完了');
+        };
+
+        window.cancelInlineEdit = function() {
+            editingScenarioId = null;
+            renderScenarios();
         };
 
         window.mergeScenarioItemNext = function(id) {
@@ -475,46 +492,26 @@
             const item = cur.scenariosList.find(s => s.id === id);
             if (!item) return;
 
-            const sel = window.getSelection();
-            let pos = -1;
-            const bodyEl = document.querySelector(`[data-id="${id}"] .text-body`);
-            if (bodyEl && sel && sel.rangeCount > 0) {
-                const range = sel.getRangeAt(0);
-                if (bodyEl.contains(range.startContainer)) {
-                    try {
-                        const preRange = document.createRange();
-                        preRange.selectNodeContents(bodyEl);
-                        preRange.setEnd(range.startContainer, range.startOffset);
-                        pos = preRange.toString().length;
-                    } catch (e) {
-                        pos = -1;
-                    }
+            if (item.text.includes('\n')) {
+                const lines = item.text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length > 1) {
+                    if (!confirm(`この項目を ${lines.length} 個の行に分割しますか？`)) return;
+                    const idx = cur.scenariosList.findIndex(s => s.id === id);
+                    const newItems = lines.map((l, i) => ({
+                        id: 'split_' + Date.now() + '_' + i,
+                        tab: item.tab,
+                        speaker: item.speaker,
+                        text: l
+                    }));
+                    cur.scenariosList.splice(idx, 1, ...newItems);
+                    delete cur.sentIds[id];
+                    save();
+                    renderScenarios();
+                    showToast('行で分割完了');
+                    return;
                 }
             }
-
-            if (pos <= 0 || pos >= item.text.length) {
-                if (item.text.includes('\n')) {
-                    const lines = item.text.split(/\r?\n/).filter(l => l.trim() !== '');
-                    if (lines.length > 1) {
-                        if (!confirm(`この項目を ${lines.length} 個の行に分割しますか？`)) return;
-                        const idx = cur.scenariosList.findIndex(s => s.id === id);
-                        const newItems = lines.map((l, i) => ({
-                            id: 'split_' + Date.now() + '_' + i,
-                            tab: item.tab,
-                            speaker: item.speaker,
-                            text: l
-                        }));
-                        cur.scenariosList.splice(idx, 1, ...newItems);
-                        delete cur.sentIds[id];
-                        save();
-                        renderScenarios();
-                        showToast('行で分割完了');
-                        return;
-                    }
-                }
-                pos = Math.floor(item.text.length / 2);
-            }
-
+            const pos = Math.floor(item.text.length / 2);
             const idx = cur.scenariosList.findIndex(s => s.id === id);
             const firstText = item.text.slice(0, pos);
             const secondText = item.text.slice(pos);
@@ -543,6 +540,7 @@
             const cur = getCur();
             cur.scenariosList = cur.scenariosList.filter(s => s.id !== id);
             delete cur.sentIds[id];
+            if (editingScenarioId === id) editingScenarioId = null;
             save();
             renderScenarios();
         }
@@ -593,42 +591,62 @@
 
             allScenarios.forEach(item => {
                 const isSent = !!cur.sentIds[item.id];
+                const isEditing = editingScenarioId === item.id;
                 const div = document.createElement('div');
-                div.className = `scenario-item ${isSent ? 'sent' : ''}`;
+                div.className = `scenario-item ${isSent ? 'sent' : ''} ${isEditing ? 'editing' : ''}`;
                 div.setAttribute('data-id', item.id);
                 
                 let tabOptionsHTML = cur.tabs.map(t => `<option value="${escapeHTML(t)}" ${item.tab === t ? 'selected' : ''}>${escapeHTML(t)}</option>`).join('');
 
-                div.innerHTML = `
-                    <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
-                    <div class="scenario-actions-top">
-                        <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
-                            ${tabOptionsHTML}
-                        </select>
-                        <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
-                        <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
-                        <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
-                        <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
-                        <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}', event)" title="選択・タップ位置で分割">✂️分割</button>
-                        <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
-                    </div>
-                    <div style="flex:1; min-width:0;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
-                            <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
-                            ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
+                if (isEditing) {
+                    div.innerHTML = `
+                        <div style="width:100%; display:flex; flex-direction:column; gap:6px;" onclick="event.stopPropagation()">
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <label style="font-size:0.65rem; color:var(--text-muted);">話者:</label>
+                                <input type="text" id="edit-speaker-${item.id}" value="${escapeAttr(item.speaker)}" style="flex:1;">
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                <label style="font-size:0.65rem; color:var(--text-muted);">本文（マルチ行OK）:</label>
+                                <textarea id="edit-text-${item.id}" style="width:100%; min-height:90px; font-size:0.8rem; line-height:1.4;">${escapeHTML(item.text)}</textarea>
+                            </div>
+                            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:4px;">
+                                <button onclick="cancelInlineEdit()" style="background:var(--surface); color:var(--text-muted); border:1px solid var(--border); padding:4px 10px;">キャンセル</button>
+                                <button onclick="saveInlineEdit('${item.id}')" style="background:var(--primary); color:#fff; border:none; padding:4px 12px; font-weight:bold;">保存</button>
+                            </div>
                         </div>
-                        <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
-                    </div>
-                `;
-                div.onclick = (e) => {
-                    if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
-                    const rawPayload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
-                    const payload = rawPayload.replace(/\r?\n/g, ' '); // 横長化（改行を半角スペースに）
-                    cur.sentIds[item.id] = true;
-                    save();
-                    copy(payload);
-                    renderScenarios();
-                };
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
+                        <div class="scenario-actions-top">
+                            <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
+                                ${tabOptionsHTML}
+                            </select>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
+                            <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}', event)" title="改行・分割">✂️分割</button>
+                            <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
+                                <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
+                                ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
+                            </div>
+                            <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
+                        </div>
+                    `;
+                    div.onclick = (e) => {
+                        if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+                        const rawPayload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
+                        const payload = rawPayload.replace(/\r?\n/g, ' '); // 横長化（改行を半角スペースに）
+                        cur.sentIds[item.id] = true;
+                        save();
+                        copy(payload);
+                        renderScenarios();
+                    };
+                }
                 list.appendChild(div);
             });
         }
@@ -647,6 +665,10 @@
 
         function escapeHTML(str) {
             return String(str || '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+        }
+
+        function escapeAttr(str) {
+            return String(str || '').replace(/"/g, '&quot;');
         }
 
         function renderAll() {
