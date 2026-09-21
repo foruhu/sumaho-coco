@@ -30,9 +30,10 @@
         .import-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
         .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
         .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); }
-        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; }
+        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
+        .scenario-del-btn { position: absolute; top: 6px; right: 8px; font-size: 0.7rem; color: #ef4444; background: none; border: none; padding: 2px 6px; cursor: pointer; z-index: 2; }
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
         
         #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0d9488; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 0.75rem; font-weight: bold; transition: transform 0.25s ease-out; z-index: 999; max-width: 90%; text-align: center; word-break: break-all; }
@@ -246,7 +247,6 @@
                 if (!cur.tabs.includes(clean)) cur.tabs.push(clean);
                 if (!cur.customItems[clean]) cur.customItems[clean] = [];
                 cur.currentTab = clean;
-/********************/
                 save(); renderAll();
             }
         }
@@ -268,6 +268,14 @@
             const cur = getCur();
             cur.customItems[cur.currentTab].splice(idx, 1);
             save(); renderGrid();
+        }
+
+        function deleteScenarioItem(id) {
+            const cur = getCur();
+            cur.scenariosList = cur.scenariosList.filter(s => s.id !== id);
+            delete cur.sentIds[id];
+            save();
+            renderScenarios();
         }
 
         function showToast(msg) {
@@ -315,16 +323,17 @@
                 div.className = `scenario-item ${isSent ? 'sent' : ''}`;
                 div.innerHTML = `
                     <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
-                    <div style="flex:1; min-width:0;">
+                    <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')">✕削除</button>
+                    <div style="flex:1; min-width:0; padding-right:36px;">
                         <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
                             <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
-                            ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
+                            ${isSent ? '<span style="color:#34d399; margin-right:32px;">✓ 送信済み</span>' : ''}
                         </div>
                     <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
                     </div>
                 `;
                 div.onclick = (e) => {
-                    if (e.target.tagName === 'INPUT') return;
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
                     const payload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
                     cur.sentIds[item.id] = true;
                     save();
@@ -343,6 +352,14 @@
             } else {
                 cur.sentIds[id] = true;
             }
+            save();
+            renderScenarios();
+        };
+
+        window.deleteScenarioItem = function(id) {
+            const cur = getCur();
+            cur.scenariosList = cur.scenariosList.filter(s => s.id !== id);
+            delete cur.sentIds[id];
             save();
             renderScenarios();
         };
