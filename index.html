@@ -22,13 +22,15 @@
         .tab-item.active { background: var(--primary); border-color: var(--primary); }
         .tab-item.active .tab-btn { color: #fff; font-weight: bold; }
         .tab-edit-mini { background: none; border: none; color: var(--text-muted); font-size: 0.65rem; padding: 4px 6px; cursor: pointer; border-left: 1px solid var(--border); }
-        .tab-item.active .tab-edit-mini { color: rgba(255,255,255,0.8); border-left-color: rgba(255,255,255,0.2); }
         .tab-edit-mini:hover { color: #ef4444; }
 
-        .add-box { display: flex; gap: 4px; margin-bottom: 12px; }
+        .add-box { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+        .add-box input:nth-child(1) { flex: 0.25; min-width: 70px; }
+        .add-box input:nth-child(2) { flex: 0.45; min-width: 120px; }
+        .add-box select { flex: 0.2; min-width: 70px; }
+        .add-box button { flex: 0.1; min-width: 50px; }
+
         input, button, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; box-sizing: border-box; }
-        .add-box input:nth-child(1) { flex: 0.35; }
-        .add-box input:nth-child(2) { flex: 0.65; }
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
         .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; font-size: 0.8rem; text-align: center; touch-action: manipulation; position: relative; word-break: break-all; cursor: pointer; }
         .btn:active { background: #27272a; }
@@ -39,7 +41,7 @@
         .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); }
         
         #scenarioList {
-            max-height: 50vh;
+            max-height: 55vh;
             overflow-y: auto;
             padding-right: 4px;
         }
@@ -53,6 +55,8 @@
         .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
         .scenario-del-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 5px; cursor: pointer; }
         .scenario-del-btn:hover { background: #ef4444; color: #fff; }
+
+        .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; }
 
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
         
@@ -75,18 +79,20 @@
         </span>
     </h2>
     
+    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">タブ管理（名称変更・削除）:</div>
     <div class="tab-bar" id="tabBar"></div>
 
     <div class="import-section">
         <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">📂 ファイル読込（PDF / Word(.docx) / TXT抽出）</div>
         <input type="file" id="fileInput" accept=".txt,.json,.csv,.md,.pdf,.docx" style="width:100%; margin-bottom:6px; font-size:0.7rem;">
         <textarea id="importPreview" placeholder="ここに抽出されたテキスト、または直接ペーストした文章を解析・登録します" style="width:100%; height:55px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
-        <button onclick="parseAndImportText()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">抽出テキストを現在タブに登録</button>
+        <button onclick="parseAndImportText()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">抽出テキストを全件に登録</button>
     </div>
 
     <div class="add-box">
         <input type="text" id="labelInput" placeholder="ラベル (例: 目星)">
         <input type="text" id="textInput" placeholder="コマンド/台詞 (1d100<=70 目星)">
+        <select id="itemTabSelect"></select>
         <button onclick="addItem()">追加</button>
     </div>
 
@@ -94,10 +100,10 @@
 
     <div class="scenario-section">
         <div class="scenario-header">
-            <span>📜 タブ別シナリオ・情報</span>
+            <span>📜 シナリオ・情報一覧（全件表示）</span>
             <span>
                 <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
-                <button onclick="clearCurrentTabScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">このタブを全クリア</button>
+                <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全シナリオクリア</button>
             </span>
         </div>
         <div id="scenarioList"></div>
@@ -106,7 +112,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v4';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v5';
 
         const defaultData = {
             currentScenario: 'sample_scenario',
@@ -132,7 +138,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v3') || localStorage.getItem('sumaho_coco_multiscenario_v2') || localStorage.getItem('sumaho_coco_multiscenario');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v4') || localStorage.getItem('sumaho_coco_multiscenario_v3');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -165,15 +171,14 @@
             }
         }
 
-        function clearCurrentTabScenarios() {
+        function clearAllScenarios() {
             const cur = getCur();
-            if (confirm(`「${cur.currentTab}」タブの登録シナリオをすべて削除しますか？`)) {
-                const targetIds = cur.scenariosList.filter(s => s.tab === cur.currentTab).map(s => s.id);
-                cur.scenariosList = cur.scenariosList.filter(s => s.tab !== cur.currentTab);
-                targetIds.forEach(id => delete cur.sentIds[id]);
+            if (confirm('このシナリオの登録シナリオをすべて削除しますか？')) {
+                cur.scenariosList = [];
+                cur.sentIds = {};
                 save();
                 renderScenarios();
-                showToast('タブ内のシナリオをクリアしました');
+                showToast('シナリオをクリアしました');
             }
         }
 
@@ -224,6 +229,7 @@
             if (!raw.trim()) return;
             const cur = getCur();
             const lines = raw.split(/\r?\n/).filter(l => l.trim() !== '');
+            const targetTab = cur.currentTab || cur.tabs[0] || '共通';
             
             lines.forEach((line, idx) => {
                 let speaker = 'KP';
@@ -241,7 +247,7 @@
 
                 cur.scenariosList.push({
                     id: 'imp_' + Date.now() + '_' + idx,
-                    tab: cur.currentTab,
+                    tab: targetTab,
                     speaker: speaker,
                     text: text
                 });
@@ -304,7 +310,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'tab-btn';
                 btn.textContent = tab;
-                btn.onclick = () => { cur.currentTab = tab; save(); renderAll(); };
+                btn.onclick = () => { cur.currentTab = tab; save(); renderTabs(); };
                 
                 const editBtn = document.createElement('button');
                 editBtn.className = 'tab-edit-mini';
@@ -318,6 +324,22 @@
                 item.appendChild(btn);
                 item.appendChild(editBtn);
                 bar.appendChild(item);
+            });
+            renderItemTabSelectOptions();
+        }
+
+        function renderItemTabSelectOptions() {
+            const cur = getCur();
+            const sel = document.getElementById('itemTabSelect');
+            if (!sel) return;
+            const currentVal = sel.value;
+            sel.innerHTML = '';
+            cur.tabs.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                opt.textContent = t;
+                if (t === (currentVal || cur.currentTab)) opt.selected = true;
+                sel.appendChild(opt);
             });
         }
 
@@ -335,7 +357,7 @@
 
         function editTab(oldName) {
             const cur = getCur();
-            const action = prompt(`タブ「${oldName}」の操作:\n・名前を変更する場合は新しい名前を入力\n・「DEL」または空欄で削除（※中身も消えます）`, oldName);
+            const action = prompt(`タブ「${oldName}」の操作:\n・名前を変更する場合は新しい名前を入力\n・「DEL」または空欄で削除（※所属アイテムのタブは「共通」等へフォールバック）`, oldName);
             
             if (action === null) return;
             const newName = action.trim();
@@ -344,16 +366,17 @@
                     alert('最後のタブは削除できません');
                     return;
                 }
-                if (!confirm(`タブ「${oldName}」および紐づくデータをすべて削除しますか？`)) return;
+                if (!confirm(`タブ「${oldName}」を削除しますか？`)) return;
 
                 cur.tabs = cur.tabs.filter(t => t !== oldName);
                 delete cur.customItems[oldName];
-                const targetIds = cur.scenariosList.filter(s => s.tab === oldName).map(s => s.id);
-                cur.scenariosList = cur.scenariosList.filter(s => s.tab !== oldName);
-                targetIds.forEach(id => delete cur.sentIds[id]);
+                const fallbackTab = cur.tabs[0] || '共通';
+                cur.scenariosList.forEach(s => {
+                    if (s.tab === oldName) s.tab = fallbackTab;
+                });
 
                 if (cur.currentTab === oldName) {
-                    cur.currentTab = cur.tabs[0];
+                    cur.currentTab = fallbackTab;
                 }
                 save();
                 renderAll();
@@ -403,7 +426,15 @@
             save(); renderGrid();
         }
 
-        // --- シナリオ項目の編集・結合・分割関数 ---
+        window.changeItemTab = function(id, newTab) {
+            const cur = getCur();
+            const item = cur.scenariosList.find(s => s.id === id);
+            if (!item) return;
+            item.tab = newTab;
+            save();
+            showToast(`タブを「${newTab}」に変更`);
+        };
+
         window.editScenarioItem = function(id) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
@@ -421,18 +452,17 @@
 
         window.mergeScenarioItemNext = function(id) {
             const cur = getCur();
-            const filtered = cur.scenariosList.filter(s => s.tab === cur.currentTab);
-            const idxInFiltered = filtered.findIndex(s => s.id === id);
-            if (idxInFiltered === -1 || idxInFiltered === filtered.length - 1) {
+            const idx = cur.scenariosList.findIndex(s => s.id === id);
+            if (idx === -1 || idx === cur.scenariosList.length - 1) {
                 showToast('下に結合できる項目がありません');
                 return;
             }
-            const currentItem = filtered[idxInFiltered];
-            const nextItem = filtered[idxInFiltered + 1];
+            const currentItem = cur.scenariosList[idx];
+            const nextItem = cur.scenariosList[idx + 1];
             if (!confirm(`「${currentItem.text.slice(0, 15)}...」と下の項目を結合しますか？`)) return;
             
             currentItem.text = currentItem.text + '\n' + nextItem.text;
-            cur.scenariosList = cur.scenariosList.filter(s => s.id !== nextItem.id);
+            cur.scenariosList.splice(idx + 1, 1);
             delete cur.sentIds[nextItem.id];
             save();
             renderScenarios();
@@ -521,30 +551,37 @@
             const cur = getCur();
             const list = document.getElementById('scenarioList');
             list.innerHTML = '';
-            const filtered = cur.scenariosList.filter(s => s.tab === cur.currentTab);
+            const allScenarios = cur.scenariosList || [];
             
-            const sentCount = filtered.filter(s => cur.sentIds[s.id]).length;
-            document.getElementById('scenarioProgress').textContent = `${sentCount} / ${filtered.length} 完了`;
+            const sentCount = allScenarios.filter(s => cur.sentIds[s.id]).length;
+            document.getElementById('scenarioProgress').textContent = `${sentCount} / ${allScenarios.length} 完了`;
 
-            if (filtered.length === 0) {
-                list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:16px;">このタブに登録された文章はありません</div>';
+            if (allScenarios.length === 0) {
+                list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:16px;">登録された文章はありません</div>';
                 return;
             }
 
-            filtered.forEach(item => {
+            allScenarios.forEach(item => {
                 const isSent = !!cur.sentIds[item.id];
                 const div = document.createElement('div');
                 div.className = `scenario-item ${isSent ? 'sent' : ''}`;
+                
+                // タブ選択肢用プルダウン生成
+                let tabOptionsHTML = cur.tabs.map(t => `<option value="${escapeHTML(t)}" ${item.tab === t ? 'selected' : ''}>${escapeHTML(t)}</option>`).join('');
+
                 div.innerHTML = `
                     <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
                     <div class="scenario-actions-top">
+                        <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
+                            ${tabOptionsHTML}
+                        </select>
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}')" title="分割">✂️分割</button>
                         <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
                     </div>
                     <div style="flex:1; min-width:0;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 140px;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 180px;">
                             <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
                             ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                         </div>
@@ -552,7 +589,7 @@
                     </div>
                 `;
                 div.onclick = (e) => {
-                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+                    if (['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
                     const payload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
                     cur.sentIds[item.id] = true;
                     save();
