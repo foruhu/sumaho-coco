@@ -2,200 +2,233 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sumaho-coco セッション支援（完全版）</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sumaho-coco 完全版</title>
+    <!-- Mammoth & PDF.js for import -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         :root {
-            --bg: #09090b; --surface: #18181b; --primary: #9333ea; --accent: #10b981; --text: #f4f4f5; --text-muted: #a1a1aa; --border: #27272a;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #6366f1;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
         }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 12px; font-size: 13px; padding-bottom: 90px; }
-        .scenario-selector { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; background: var(--surface); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
-        .scenario-selector select { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px; font-size: 0.8rem; }
-        h2 { color: #c084fc; font-size: 1rem; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
-        
-        .tab-bar { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; align-items: center; }
-        .tab-item { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
-        .tab-btn { background: none; color: var(--text-muted); border: none; padding: 5px 8px; font-size: 0.75rem; white-space: nowrap; cursor: pointer; }
-        .tab-item.active { background: var(--primary); border-color: var(--primary); }
-        .tab-item.active .tab-btn { color: #fff; font-weight: bold; }
-        .tab-edit-mini { background: none; border: none; color: var(--text-muted); font-size: 0.65rem; padding: 4px 6px; cursor: pointer; border-left: 1px solid var(--border); }
-        .tab-edit-mini:hover { color: #ef4444; }
-
-        input, button, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; box-sizing: border-box; }
-        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
-        .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; font-size: 0.8rem; text-align: center; touch-action: manipulation; position: relative; word-break: break-all; cursor: pointer; }
-        .btn:active { background: #27272a; }
-        .del-btn { position: absolute; top: 2px; right: 4px; font-size: 0.6rem; color: #ef4444; background: none; border: none; padding: 2px 4px; cursor: pointer; }
-        
-        .import-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
-        .data-io-bar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-        .data-io-bar button { flex: 1; min-width: 120px; font-size: 0.7rem; padding: 5px 8px; cursor: pointer; }
-
-        .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
-        .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px; }
-        .scenario-search-box { width: 100%; margin-bottom: 8px; }
-        .scenario-search-box input { width: 100%; font-size: 0.75rem; }
-        
-        .scenario-body-container {
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: var(--bg);
+        }
+        header {
+            padding: 8px 10px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h2 { font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
+        .toolbar { display: flex; gap: 4px; flex-wrap: wrap; }
+        button {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        button:hover { background: var(--border); }
+        .scenario-select-area {
+            padding: 6px 8px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
             display: flex;
             gap: 8px;
-            align-items: flex-start;
+            align-items: center;
         }
-
-        #scenarioList {
+        select {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 0.75rem;
             flex: 1;
-            min-width: 0;
-            max-height: 52vh;
-            overflow-y: auto;
-            padding-right: 4px;
         }
-
-        #scenarioIndexBar {
+        .tab-bar {
+            display: flex;
+            overflow-x: auto;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .tab-item { display: flex; align-items: center; border-right: 1px solid var(--border); }
+        .tab-item.active { background: var(--bg); }
+        .tab-btn { background: none; border: none; padding: 6px 10px; color: var(--text); cursor: pointer; font-size: 0.75rem; }
+        .tab-edit-mini { background: none; border: none; font-size: 0.6rem; padding: 0 4px; cursor: pointer; color: var(--text-muted); }
+        .grid-container {
+            padding: 6px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            max-height: 130px;
+            overflow-y: auto;
+            border-bottom: 1px solid var(--border);
+        }
+        .btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 0.7rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .del-btn { background: none; border: none; color: #ef4444; font-size: 0.65rem; cursor: pointer; }
+        .index-bar {
+            display: flex;
+            overflow-x: auto;
+            gap: 4px;
+            padding: 4px 6px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .index-item-group { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+        .scenario-action-btn { background: none; border: none; color: var(--text); padding: 3px 5px; font-size: 0.6rem; cursor: pointer; }
+        .scenario-del-btn { background: none; border: none; color: #ef4444; padding: 3px 4px; font-size: 0.6rem; cursor: pointer; }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .search-area { padding: 6px; display: flex; gap: 4px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: center; font-size: 0.7rem; }
+        .search-area input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; }
+        .scenario-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+        .scenario-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
             gap: 4px;
-            width: 110px;
-            flex-shrink: 0;
-            max-height: 52vh;
-            overflow-y: auto;
-            padding-left: 2px;
+            font-size: 0.75rem;
         }
-        #scenarioIndexBar::-webkit-scrollbar { width: 3px; }
-        #scenarioIndexBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-        .index-item-group { display: flex; align-items: center; gap: 2px; width: 100%; }
-        .scenario-index-btn {
-            text-align: left;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            padding: 4px 6px;
-            flex: 1;
+        .scenario-item.sent { opacity: 0.6; }
+        .scenario-item.editing { border-color: var(--primary); }
+        .scenario-actions-top { display: flex; flex-direction: column; gap: 2px; border-top: 1px dashed var(--border); padding-top: 4px; margin-top: 2px; }
+        .actions-row { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+        .item-tab-select { background: var(--bg); color: var(--text); border: 1px solid var(--border); font-size: 0.6rem; padding: 2px; border-radius: 3px; }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #334155;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
-
-        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 68px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
-        .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
-        .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
-        .scenario-item.editing { cursor: default; border-color: var(--primary); background: #121019; }
-        
-        .scenario-actions-top { 
-            position: absolute; top: 4px; right: 6px; left: 38px; 
-            display: flex; flex-direction: column; gap: 3px; z-index: 2; 
-        }
-        .actions-row { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-        
-        .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-        .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
-        
-        .scenario-del-btn { background: var(--bg); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 8px; cursor: pointer; flex-shrink: 0; margin-left: auto; }
-        .scenario-del-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
-
-        .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; margin-right: auto; }
-        .text-body { user-select: text; -webkit-user-select: text; white-space: pre-wrap; }
-
-        input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
-        
-        #toast { 
-            position: fixed; 
-            bottom: 16px; 
-            left: 50%; 
-            transform: translateX(-50%) translateY(80px); 
-            background: #0d9488; 
-            color: #fff; 
-            padding: 10px 14px; 
-            border-radius: 12px; 
-            font-size: 0.75rem; 
-            font-weight: bold; 
-            transition: transform 0.25s ease-out; 
-            z-index: 999; 
-            width: 92%; 
-            max-width: 500px; 
-            text-align: center; 
-            word-break: break-all; 
-            pointer-events: none; 
-            box-sizing: border-box; 
-        }
-        #toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .import-area { padding: 6px 8px; background: var(--surface); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+        textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 4px; font-size: 0.7rem; }
     </style>
 </head>
 <body>
-    <div class="scenario-selector">
-        <span style="font-weight:bold; color:#c084fc;">📁 シナリオ:</span>
-        <select id="scenarioSelect" onchange="switchScenario(this.value)"></select>
-        <button onclick="addScenario()" style="padding:4px 8px; font-size:0.7rem;">+追加</button>
-    </div>
+    <div class="app-container">
+        <header>
+            <h2><span>📱 Sumaho-coco</span></h2>
+            <div class="toolbar">
+                <button onclick="undoAction()" style="background:#d97706; color:#fff; border:none;">↩️ 戻す</button>
+                <button onclick="addTab()">+タブ</button>
+                <button onclick="exportDataJson()">保存</button>
+                <button onclick="importDataJsonPrompt()">読込</button>
+                <button onclick="resetAllData()" style="color:#ef4444; border-color:#ef4444;">初期化</button>
+            </div>
+            <input type="file" id="jsonFileInput" style="display:none" accept=".json" onchange="handleJsonFileSelect(event)">
+        </header>
 
-    <h2>
-        <span>📱 Sumaho-coco</span>
-        <span>
-            <button onclick="addTab()" style="font-size:0.7rem; padding:3px 8px;">+タブ追加</button>
-            <button onclick="resetAllData()" style="font-size:0.7rem; padding:3px 8px; color:#ef4444; border-color:#ef4444;">初期化</button>
-        </span>
-    </h2>
-    
-    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">タブ管理（名称変更・削除）:</div>
-    <div class="tab-bar" id="tabBar"></div>
-
-    <div class="import-section">
-        <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">💾 データ保存・バックアップ・読込</div>
-        <div class="data-io-bar">
-            <button onclick="exportDataJson()" style="background:#3b82f6; color:#fff; border:none; border-radius:6px;">📤 JSON保存（エクスポート）</button>
-            <button onclick="importDataJsonPrompt()" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px;">📥 JSON復元（インポート）</button>
+        <div class="scenario-select-area">
+            <select id="scenarioSelect" onchange="switchScenario(this.value)"></select>
+            <button onclick="addScenario()">+シナリオ</button>
         </div>
-        <input type="file" id="jsonFileInput" accept=".json" style="display:none;" onchange="handleJsonFileSelect(event)">
-        
-        <div style="font-weight:bold; color:var(--text); margin: 10px 0 6px 0; font-size:0.75rem;">📂 ファイル読込（PDF / Word(.docx) / TXT抽出）</div>
-        <input type="file" id="fileInput" accept=".txt,.json,.csv,.md,.pdf,.docx" style="width:100%; margin-bottom:6px; font-size:0.7rem;">
-        <textarea id="importPreview" placeholder="ここに抽出されたテキスト、または直接ペーストした文章を解析・登録します" style="width:100%; height:55px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
-        <button onclick="parseAndImportText()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">抽出テキストを全件に登録</button>
-    </div>
 
-    <div class="grid" id="buttonGrid"></div>
+        <div class="tab-bar" id="tabBar"></div>
+        <div class="grid-container" id="buttonGrid"></div>
 
-    <div class="scenario-section">
-        <div class="scenario-header">
-            <span>📜 シナリオ・情報一覧</span>
-            <span>
-                <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
-                <button onclick="deleteCheckedScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer; margin-right:4px;" title="チェック付き項目をまとめて削除">選択削除(✓付)</button>
-                <button onclick="resetAllChecks()" style="font-size:0.65rem; padding:2px 6px; color:var(--text); background:none; border:1px solid var(--border); border-radius:4px; cursor:pointer; margin-right:4px;">チェック全解除</button>
-                <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全クリア</button>
-            </span>
+        <div class="index-bar" id="scenarioIndexBar"></div>
+
+        <div class="main-content">
+            <div class="search-area">
+                <input type="text" id="scenarioSearchInput" placeholder="検索..." oninput="renderScenarios()">
+                <span id="scenarioProgress" style="white-space:nowrap;">0/0完了</span>
+                <button onclick="resetAllChecks()">解除</button>
+                <button onclick="deleteCheckedScenarios()" style="color:#ef4444;">選択消去</button>
+            </div>
+            <div class="scenario-list" id="scenarioList"></div>
         </div>
-        <div class="scenario-search-box">
-            <input type="text" id="scenarioSearchInput" placeholder="🔍 話者・本文で検索..." oninput="renderScenarios()">
-        </div>
-        <div class="scenario-body-container">
-            <div id="scenarioList"></div>
-            <div id="scenarioIndexBar"></div>
+
+        <div class="import-area">
+            <div style="display:flex; gap:4px; align-items:center;">
+                <input type="file" id="fileInput" accept=".txt,.pdf,.docx" style="font-size:0.65rem; flex:1;">
+                <button onclick="parseAndImportText()">インポート</button>
+            </div>
+            <textarea id="importPreview" placeholder="テキスト直貼り付け・ファイルプレビュー" rows="2"></textarea>
         </div>
     </div>
 
-    <div id="toast">コピーしました！</div>
+    <div class="toast" id="toast"></div>
 
     <script>
         const STORAGE_KEY = 'sumaho_coco_multiscenario_v16';
         let editingScenarioId = null;
 
+        let historyStack = [];
+        function pushHistory() {
+            historyStack.push(JSON.parse(JSON.stringify(allData)));
+            if (historyStack.length > 20) historyStack.shift();
+        }
+        function undoAction() {
+            if (historyStack.length === 0) {
+                showToast('戻せる履歴がありません');
+                return;
+            }
+            allData = historyStack.pop();
+            editingScenarioId = null;
+            save();
+            renderAll();
+            showToast('一歩前に戻しました');
+        }
+
         const defaultData = {
-            currentScenario: 'sample_scenario',
+            currentScenario: 'default_sc',
             scenarios: {
-                'sample_scenario': {
-                    title: '生物ユニット 55（サンプル）',
-                    tabs: ['共通', 'PC1', 'KP用', '情報', '描写'],
-                    currentTab: '情報',
+                'default_sc': {
+                    title: 'サンプルシナリオ',
+                    tabs: ['共通', 'PC1', 'KP用', '情報'],
+                    currentTab: '共通',
                     customItems: {
                         '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
-                        'PC1': [{ label: '目星', text: '1d100<=70 目星' }],
-                        'KP用': [{ label: 'シークレット', text: '【KP】シークレットダイス' }],
-                        '情報': [],
-                        '描写': []
+                        'PC1': [], 'KP用': [], '情報': []
                     },
                     scenariosList: [
-                        { id: 's1', tab: '情報', speaker: 'KP', text: 'この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。', isIndex: true, indexTitle: 'この施設は「財団」' },
-                        { id: 's2', tab: '描写', speaker: 'KP', text: '薄暗いロビーに足を踏み入れると、不気味な静寂が迎えてくれる。' }
+                        { id: 's1', tab: '共通', speaker: 'KP', text: 'セッション開始します。' },
+                        { id: 's2', tab: 'PC1', speaker: 'PC1', text: '調査を行ないます。' }
                     ],
                     sentIds: {}
                 }
@@ -204,11 +237,10 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v15') || localStorage.getItem('sumaho_coco_multiscenario_v14');
+            const saved = localStorage.getItem(STORAGE_KEY);
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
-            console.error('LocalStorage load error, resetting...', e);
             allData = JSON.parse(JSON.stringify(defaultData));
         }
 
@@ -224,7 +256,7 @@
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
             } catch (e) {
-                showToast('保存容量オーバーの可能性があります');
+                showToast('保存容量オーバーの可能性');
             }
         }
 
@@ -234,7 +266,7 @@
             dlAnchorElem.setAttribute("href", dataStr);
             dlAnchorElem.setAttribute("download", `sumaho_coco_backup_${Date.now()}.json`);
             dlAnchorElem.click();
-            showToast('JSONファイルを書き出しました');
+            showToast('JSON書き出し完了');
         }
 
         function importDataJsonPrompt() {
@@ -250,18 +282,15 @@
                     const parsed = JSON.parse(e.target.result);
                     if (parsed && parsed.scenarios && parsed.currentScenario) {
                         if (confirm('現在のデータを上書きしてJSONを復元しますか？')) {
+                            pushHistory();
                             allData = parsed;
                             editingScenarioId = null;
                             save();
                             renderAll();
-                            showToast('JSONデータを復元しました');
+                            showToast('JSON復元完了');
                         }
-                    } else {
-                        alert('不正な形式のJSONファイルです');
-                    }
-                } catch (err) {
-                    alert('JSONファイルの読み込みに失敗しました');
-                }
+                    } else { alert('不正なJSON形式'); }
+                } catch (err) { alert('読込失敗'); }
                 event.target.value = '';
             };
             reader.readAsText(file);
@@ -269,6 +298,7 @@
 
         function resetAllData() {
             if (confirm('データを初期化してサンプルに戻しますか？')) {
+                pushHistory();
                 localStorage.removeItem(STORAGE_KEY);
                 allData = JSON.parse(JSON.stringify(defaultData));
                 renderAll();
@@ -276,49 +306,26 @@
             }
         }
 
-        function clearAllScenarios() {
-            const cur = getCur();
-            if (confirm('このシナリオの登録シナリオをすべて削除しますか？')) {
-                cur.scenariosList = [];
-                cur.sentIds = {};
-                editingScenarioId = null;
-                save();
-                renderScenarios();
-                showToast('シナリオをクリアしました');
-            }
-        }
-
         function deleteCheckedScenarios() {
             const cur = getCur();
             const checkedIds = Object.keys(cur.sentIds).filter(id => cur.sentIds[id]);
-            if (checkedIds.length === 0) {
-                showToast('削除対象のチェック付き項目がありません');
-                return;
-            }
-            if (!confirm(`チェックの付いた ${checkedIds.length} 件の項目を削除しますか？`)) return;
-
+            if (checkedIds.length === 0) { showToast('チェック付き項目なし'); return; }
+            if (!confirm(`チェック付き ${checkedIds.length} 件を削除しますか？`)) return;
+            pushHistory();
             const removeSet = new Set(checkedIds);
             cur.scenariosList = cur.scenariosList.filter(s => !removeSet.has(s.id));
             checkedIds.forEach(id => delete cur.sentIds[id]);
-            if (editingScenarioId && removeSet.has(editingScenarioId)) {
-                editingScenarioId = null;
-            }
-            save();
-            renderScenarios();
-            showToast(`${checkedIds.length} 件を削除しました`);
+            if (editingScenarioId && removeSet.has(editingScenarioId)) editingScenarioId = null;
+            save(); renderScenarios(); showToast(`${checkedIds.length} 件削除`);
         }
 
         function resetAllChecks() {
             const cur = getCur();
-            if (Object.keys(cur.sentIds).length === 0) {
-                showToast('解除するチェックはありません');
-                return;
-            }
-            if (confirm('すべてのチェック（送信済み状態）を解除しますか？')) {
+            if (Object.keys(cur.sentIds).length === 0) { showToast('解除するチェックなし'); return; }
+            if (confirm('すべてのチェックを解除しますか？')) {
+                pushHistory();
                 cur.sentIds = {};
-                save();
-                renderScenarios();
-                showToast('チェックを全解除しました');
+                save(); renderScenarios(); showToast('全解除完了');
             }
         }
 
@@ -330,14 +337,13 @@
             const file = e.target.files[0];
             if (!file) return;
             const name = file.name.toLowerCase();
-
             try {
-                showToast('読み込み中...');
+                showToast('読込中...');
                 if (name.endsWith('.docx')) {
                     const arrayBuffer = await file.arrayBuffer();
                     const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
                     document.getElementById('importPreview').value = result.value;
-                    showToast('Word(.docx)抽出完了');
+                    showToast('.docx抽出完了');
                 } else if (name.endsWith('.pdf')) {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -345,64 +351,41 @@
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const page = await pdf.getPage(i);
                         const textContent = await page.getTextContent();
-                        const pageText = textContent.items.map(item => item.str).join(' ');
-                        fullText += pageText + '\n\n';
+                        fullText += textContent.items.map(item => item.str).join(' ') + '\n\n';
                     }
                     document.getElementById('importPreview').value = fullText;
-                    showToast('PDF抽出完了');
+                    showToast('.pdf抽出完了');
                 } else {
                     const reader = new FileReader();
-                    reader.onload = function(evt) {
-                        document.getElementById('importPreview').value = evt.target.result;
-                        showToast('テキスト読込完了');
-                    };
+                    reader.onload = function(evt) { document.getElementById('importPreview').value = evt.target.result; showToast('テキスト読込完了'); };
                     reader.readAsText(file);
                 }
-            } catch (err) {
-                console.error(err);
-                showToast('ファイル解析エラー');
-            }
+            } catch (err) { showToast('解析エラー'); }
         });
 
         function parseAndImportText() {
             const raw = document.getElementById('importPreview').value;
             if (!raw.trim()) return;
+            pushHistory();
             const cur = getCur();
             const lines = raw.split(/\r?\n/).filter(l => l.trim() !== '');
             const targetTab = cur.currentTab || cur.tabs[0] || '共通';
-            
             lines.forEach((line, idx) => {
                 const text = line.trim();
                 const bracketMatch = text.match(/^([【《].*?[】》])\s*(.*)$/);
-
-                let speaker = 'KP';
+                let speaker = bracketMatch ? 'KP' : 'KP';
                 let content = text;
-
-                if (bracketMatch) {
-                    speaker = 'KP';
-                    content = bracketMatch + (bracketMatch ? ' ' + bracketMatch : '');
-                } else {
-                    const colonMatch = text.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
-                    if (colonMatch) {
-                        const sp = colonMatch.toUpperCase();
-                        speaker = sp === 'GM' ? 'KP' : sp;
-                        content = colonMatch;
-                    }
+                const colonMatch = text.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
+                if (colonMatch) {
+                    const sp = colonMatch.toUpperCase();
+                    speaker = sp === 'GM' ? 'KP' : sp;
+                    content = colonMatch[2];
                 }
-
-                cur.scenariosList.push({
-                    id: 'imp_' + Date.now() + '_' + idx,
-                    tab: targetTab,
-                    speaker: speaker,
-                    text: content
-                });
+                cur.scenariosList.push({ id: 'imp_' + Date.now() + '_' + idx, tab: targetTab, speaker: speaker, text: content });
             });
-
             document.getElementById('importPreview').value = '';
             document.getElementById('fileInput').value = '';
-            save();
-            renderScenarios();
-            showToast('テキスト登録完了！');
+            save(); renderScenarios(); showToast('インポート完了');
         }
 
         function renderScenarioSelector() {
@@ -420,29 +403,25 @@
         function switchScenario(key) {
             allData.currentScenario = key;
             editingScenarioId = null;
-            save();
-            renderAll();
+            save(); renderAll();
         }
 
         function addScenario() {
-            const name = prompt('新しいシナリオ名を入力してください:');
+            const name = prompt('新しいシナリオ名:');
             if (name && name.trim()) {
+                pushHistory();
                 const key = 'sc_' + Date.now();
                 allData.scenarios[key] = {
                     title: name.trim(),
                     tabs: ['共通', 'PC1', 'KP用', '情報'],
                     currentTab: '共通',
-                    customItems: {
-                        '共通': [{ label: '移動宣言', text: '【宣言】移動します' }],
-                        'PC1': [], 'KP用': [], '情報': []
-                    },
+                    customItems: { '共通': [{ label: '移動宣言', text: '【宣言】移動します' }], 'PC1': [], 'KP用': [], '情報': [] },
                     scenariosList: [],
                     sentIds: {}
                 };
                 allData.currentScenario = key;
                 editingScenarioId = null;
-                save();
-                renderAll();
+                save(); renderAll();
             }
         }
 
@@ -453,31 +432,23 @@
             cur.tabs.forEach(tab => {
                 const item = document.createElement('div');
                 item.className = `tab-item ${tab === cur.currentTab ? 'active' : ''}`;
-                
                 const btn = document.createElement('button');
                 btn.className = 'tab-btn';
                 btn.textContent = tab;
                 btn.onclick = () => { cur.currentTab = tab; save(); renderTabs(); renderGrid(); };
-                
                 const editBtn = document.createElement('button');
                 editBtn.className = 'tab-edit-mini';
                 editBtn.innerHTML = '✏️';
-                editBtn.title = 'タブ名変更・削除';
-                editBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    editTab(tab);
-                };
-
-                item.appendChild(btn);
-                item.appendChild(editBtn);
-                bar.appendChild(item);
+                editBtn.onclick = (e) => { e.stopPropagation(); editTab(tab); };
+                item.appendChild(btn); item.appendChild(editBtn); bar.appendChild(item);
             });
         }
 
         function addTab() {
             const cur = getCur();
-            const name = prompt('追加するタブ名（例: PC2, 敵A）:');
+            const name = prompt('追加するタブ名:');
             if (name && name.trim()) {
+                pushHistory();
                 const clean = name.trim();
                 if (!cur.tabs.includes(clean)) cur.tabs.push(clean);
                 if (!cur.customItems[clean]) cur.customItems[clean] = [];
@@ -488,70 +459,44 @@
 
         function editTab(oldName) {
             const cur = getCur();
-            const action = prompt(`タブ「${oldName}」の操作:\n・名前を変更する場合は新しい名前を入力\n・「DEL」または空欄で削除`, oldName);
-            
+            const action = prompt(`タブ「${oldName}」操作(新名入力 / DEL削除)`, oldName);
             if (action === null) return;
             const newName = action.trim();
             if (newName === '' || newName.toLowerCase() === 'del') {
-                if (cur.tabs.length <= 1) {
-                    alert('最後のタブは削除できません');
-                    return;
-                }
-                if (!confirm(`タブ「${oldName}」を削除しますか？`)) return;
-
+                if (cur.tabs.length <= 1) { alert('最後尾は削除不可'); return; }
+                if (!confirm(`タブ「${oldName}」削除しますか？`)) return;
+                pushHistory();
                 cur.tabs = cur.tabs.filter(t => t !== oldName);
                 delete cur.customItems[oldName];
                 const fallbackTab = cur.tabs[0] || '共通';
-                cur.scenariosList.forEach(s => {
-                    if (s.tab === oldName) s.tab = fallbackTab;
-                });
-
-                if (cur.currentTab === oldName) {
-                    cur.currentTab = fallbackTab;
-                }
-                save();
-                renderAll();
-                showToast(`タブ「${oldName}」削除完了`);
+                cur.scenariosList.forEach(s => { if (s.tab === oldName) s.tab = fallbackTab; });
+                if (cur.currentTab === oldName) cur.currentTab = fallbackTab;
+                save(); renderAll(); showToast('削除完了');
                 return;
             }
-
             if (newName !== oldName) {
-                if (cur.tabs.includes(newName)) {
-                    alert('同名のタブが既に存在します');
-                    return;
-                }
+                if (cur.tabs.includes(newName)) { alert('同名タブ存在'); return; }
+                pushHistory();
                 const idx = cur.tabs.indexOf(oldName);
                 if (idx !== -1) cur.tabs[idx] = newName;
-                if (cur.customItems[oldName]) {
-                    cur.customItems[newName] = cur.customItems[oldName];
-                    delete cur.customItems[oldName];
-                }
-                cur.scenariosList.forEach(s => {
-                    if (s.tab === oldName) s.tab = newName;
-                });
-                if (cur.currentTab === oldName) {
-                    cur.currentTab = newName;
-                }
-                save();
-                renderAll();
-                showToast(`タブ名を「${newName}」に変更`);
+                if (cur.customItems[oldName]) { cur.customItems[newName] = cur.customItems[oldName]; delete cur.customItems[oldName]; }
+                cur.scenariosList.forEach(s => { if (s.tab === oldName) s.tab = newName; });
+                if (cur.currentTab === oldName) cur.currentTab = newName;
+                save(); renderAll(); showToast('変更完了');
             }
         }
 
         function deleteItem(idx) {
-            const cur = getCur();
-            cur.customItems[cur.currentTab].splice(idx, 1);
+            pushHistory();
+            getCur().customItems[getCur().currentTab].splice(idx, 1);
             save(); renderGrid();
         }
 
         window.changeItemTab = function(id, newTab) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
-            if (!item) return;
-            item.tab = newTab;
-            save();
-            renderScenarios();
-            showToast(`タブを「${newTab}」に変更`);
+            if (!item || item.tab === newTab) return;
+            pushHistory(); item.tab = newTab; save(); renderScenarios();
         };
 
         window.insertScenarioItemAfter = function(id) {
@@ -559,65 +504,34 @@
             const idx = cur.scenariosList.findIndex(s => s.id === id);
             if (idx === -1) return;
             const currentItem = cur.scenariosList[idx];
-            
-            const speaker = prompt('挿入する話者:', currentItem.speaker || 'KP');
+            const speaker = prompt('話者:', currentItem.speaker || 'KP');
             if (speaker === null) return;
-            const text = prompt('挿入する本文:');
+            const text = prompt('本文:');
             if (text === null || !text.trim()) return;
-            
-            const newItem = {
-                id: 'ins_' + Date.now(),
-                tab: currentItem.tab,
-                speaker: speaker.trim() || 'KP',
-                text: text
-            };
-            cur.scenariosList.splice(idx + 1, 0, newItem);
-            save();
-            renderScenarios();
-            showToast('途中に挿入しました');
+            pushHistory();
+            cur.scenariosList.splice(idx + 1, 0, { id: 'ins_' + Date.now(), tab: currentItem.tab, speaker: speaker.trim() || 'KP', text: text });
+            save(); renderScenarios();
         };
 
         window.makeItemIndexByFirstChar = function(id) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
             if (!item || !item.text) return;
-
-            const trimmedText = item.text.trim();
-            if (!trimmedText) {
-                alert('本文が空です');
-                return;
-            }
-
-            const charCount = 10;
-            const headingText = trimmedText.slice(0, charCount);
-
+            pushHistory();
             item.isIndex = true;
-            item.indexTitle = headingText;
-
-            save();
-            renderScenarios();
-            showToast(`先頭「${headingText}」を目次登録しました`);
+            item.indexTitle = item.text.trim().slice(0, 10);
+            save(); renderScenarios(); showToast('目子化');
         };
 
-        // 目次指定のみを解除する関数（本文は残る）
         window.removeIndexStatus = function(headerId) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === headerId);
             if (!item) return;
-
-            item.isIndex = false;
-            delete item.indexTitle;
-
-            save();
-            renderScenarios();
-            showToast('目次指定を解除しました');
+            pushHistory(); item.isIndex = false; delete item.indexTitle; save(); renderScenarios();
         };
 
-        window.editScenarioItem = function(id) {
-            editingScenarioId = id;
-            renderScenarios();
-        };
-
+        window.editScenarioItem = function(id) { editingScenarioId = id; renderScenarios(); };
+        window.cancelInlineEdit = function() { editingScenarioId = null; renderScenarios(); };
         window.saveInlineEdit = function(id) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
@@ -625,76 +539,40 @@
             const speakerInput = document.getElementById(`edit-speaker-${id}`);
             const textInput = document.getElementById(`edit-text-${id}`);
             if (speakerInput && textInput) {
+                pushHistory();
                 item.speaker = speakerInput.value.trim() || 'KP';
                 item.text = textInput.value;
-                if (item.indexTitle) {
-                    item.indexTitle = item.text.trim().slice(0, 10);
-                }
-                save();
-                showToast('保存しました');
+                if (item.indexTitle) item.indexTitle = item.text.trim().slice(0, 10);
+                save(); showToast('保存');
             }
-            editingScenarioId = null;
-            renderScenarios();
-        };
-
-        window.cancelInlineEdit = function() {
-            editingScenarioId = null;
-            renderScenarios();
+            editingScenarioId = null; renderScenarios();
         };
 
         window.mergeScenarioItemNext = function(id) {
             const cur = getCur();
             const idx = cur.scenariosList.findIndex(s => s.id === id);
-            if (idx === -1 || idx === cur.scenariosList.length - 1) {
-                showToast('下に結合できる項目がありません');
-                return;
-            }
+            if (idx === -1 || idx === cur.scenariosList.length - 1) return;
             const currentItem = cur.scenariosList[idx];
             const nextItem = cur.scenariosList[idx + 1];
-            if (!confirm(`「${currentItem.text.slice(0, 15)}...」と下の項目を結合しますか？`)) return;
-            
+            if (!confirm('下と結合しますか？')) return;
+            pushHistory();
             currentItem.text = currentItem.text + '\n' + nextItem.text;
             cur.scenariosList.splice(idx + 1, 1);
             delete cur.sentIds[nextItem.id];
-            save();
-            renderScenarios();
-            showToast('結合完了');
+            save(); renderScenarios();
         };
 
-        window.splitScenarioItem = function(id, event) {
+        window.splitScenarioItem = function(id) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
             if (!item) return;
-
-            if (item.text.includes('\n')) {
-                const lines = item.text.split(/\r?\n/).filter(l => l.trim() !== '');
-                if (lines.length > 1) {
-                    if (!confirm(`この項目を ${lines.length} 個の行に分割しますか？`)) return;
-                    const idx = cur.scenariosList.findIndex(s => s.id === id);
-                    const newItems = lines.map((l, i) => ({
-                        id: 'split_' + Date.now() + '_' + i,
-                        tab: item.tab,
-                        speaker: item.speaker,
-                        text: l
-                    }));
-                    cur.scenariosList.splice(idx, 1, ...newItems);
-                    delete cur.sentIds[id];
-                    save();
-                    renderScenarios();
-                    showToast('行で分割完了');
-                    return;
-                }
-            }
+            pushHistory();
             const pos = Math.floor(item.text.length / 2);
             const idx = cur.scenariosList.findIndex(s => s.id === id);
-            const firstText = item.text.slice(0, pos);
-            const secondText = item.text.slice(pos);
-            const newItem1 = { ...item, text: firstText };
-            const newItem2 = { id: 'split_' + Date.now(), tab: item.tab, speaker: item.speaker, text: secondText };
+            const newItem1 = { ...item, text: item.text.slice(0, pos) };
+            const newItem2 = { id: 'split_' + Date.now(), tab: item.tab, speaker: item.speaker, text: item.text.slice(pos) };
             cur.scenariosList.splice(idx, 1, newItem1, newItem2);
-            save();
-            renderScenarios();
-            showToast('分割完了');
+            save(); renderScenarios();
         };
 
         window.moveScenarioItem = function(id, direction) {
@@ -703,22 +581,20 @@
             if (idx === -1) return;
             const targetIdx = idx + direction;
             if (targetIdx < 0 || targetIdx >= cur.scenariosList.length) return;
-
+            pushHistory();
             const item = cur.scenariosList.splice(idx, 1)[0];
             cur.scenariosList.splice(targetIdx, 0, item);
-            save();
-            renderScenarios();
+            save(); renderScenarios();
         };
 
         window.deleteScenarioItem = function(id) {
-            if (!confirm('この項目を本当に削除しますか？')) return;
+            if (!confirm('削除しますか？')) return;
+            pushHistory();
             const cur = getCur();
             cur.scenariosList = cur.scenariosList.filter(s => s.id !== id);
             delete cur.sentIds[id];
             if (editingScenarioId === id) editingScenarioId = null;
-            save();
-            renderScenarios();
-            showToast('削除しました');
+            save(); renderScenarios();
         };
 
         let toastTimer = null;
@@ -727,13 +603,11 @@
             t.textContent = `通知: ${msg}`;
             t.classList.add('show');
             if (toastTimer) clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                t.classList.remove('show');
-            }, 1500);
+            toastTimer = setTimeout(() => { t.classList.remove('show'); }, 1500);
         }
 
         function copy(text) {
-            navigator.clipboard.writeText(text).then(() => showToast(text));
+            navigator.clipboard.writeText(text).then(() => showToast('コピー完了'));
         }
 
         function renderGrid() {
@@ -754,52 +628,29 @@
             const indexBar = document.getElementById('scenarioIndexBar');
             if (!indexBar) return;
             indexBar.innerHTML = '';
-
             const indexItems = originalList.filter(s => s.isIndex || s.indexTitle);
-
             const allBtn = document.createElement('button');
-            allBtn.className = 'scenario-action-btn scenario-index-btn';
-            allBtn.textContent = 'TOPへ';
-            allBtn.style.background = 'var(--bg)';
-            allBtn.style.color = 'var(--text-muted)';
-            allBtn.style.width = '100%';
-            allBtn.onclick = () => {
-                const listEl = document.getElementById('scenarioList');
-                if (listEl) listEl.scrollTo({ top: 0, behavior: 'smooth' });
-            };
+            allBtn.className = 'scenario-action-btn';
+            allBtn.textContent = 'TOP';
+            allBtn.onclick = () => { document.getElementById('scenarioList').scrollTo({ top: 0, behavior: 'smooth' }); };
             indexBar.appendChild(allBtn);
 
             indexItems.forEach(item => {
                 const titleText = item.indexTitle || (item.text || '').slice(0, 10);
                 const group = document.createElement('div');
                 group.className = 'index-item-group';
-
                 const btn = document.createElement('button');
-                btn.className = 'scenario-action-btn scenario-index-btn';
-                btn.textContent = titleText.slice(0, 10);
-                btn.title = titleText;
-                
+                btn.className = 'scenario-action-btn';
+                btn.textContent = titleText.slice(0, 8);
                 btn.onclick = () => {
                     const el = document.querySelector(`.scenario-item[data-id="${item.id}"]`);
-                    if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        el.style.borderColor = 'var(--primary)';
-                        setTimeout(() => { el.style.borderColor = ''; }, 1500);
-                    }
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 };
-
                 const delIndexBtn = document.createElement('button');
                 delIndexBtn.className = 'scenario-del-btn';
                 delIndexBtn.textContent = '✕';
-                delIndexBtn.title = '目次指定を解除（テキストは保持）';
-                delIndexBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    removeIndexStatus(item.id);
-                };
-
-                group.appendChild(btn);
-                group.appendChild(delIndexBtn);
-                indexBar.appendChild(group);
+                delIndexBtn.onclick = (e) => { e.stopPropagation(); removeIndexStatus(item.id); };
+                group.appendChild(btn); group.appendChild(delIndexBtn); indexBar.appendChild(group);
             });
         }
 
@@ -808,17 +659,14 @@
             const list = document.getElementById('scenarioList');
             list.innerHTML = '';
             const allScenarios = cur.scenariosList || [];
-            
             const sentCount = allScenarios.filter(s => cur.sentIds[s.id]).length;
-            document.getElementById('scenarioProgress').textContent = `${sentCount} / ${allScenarios.length} 完了`;
+            document.getElementById('scenarioProgress').textContent = `${sentCount}/${allScenarios.length}`;
 
             const searchInput = document.getElementById('scenarioSearchInput');
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
             renderScenarioIndex(allScenarios);
 
             let filteredScenarios = allScenarios;
-
             if (query) {
                 filteredScenarios = filteredScenarios.filter(item => {
                     return (item.speaker && item.speaker.toLowerCase().includes(query)) ||
@@ -832,66 +680,48 @@
                 const div = document.createElement('div');
                 div.className = `scenario-item ${isSent ? 'sent' : ''} ${isEditing ? 'editing' : ''}`;
                 div.setAttribute('data-id', item.id);
-                
                 let tabOptionsHTML = cur.tabs.map(t => `<option value="${escapeHTML(t)}" ${item.tab === t ? 'selected' : ''}>${escapeHTML(t)}</option>`).join('');
 
                 if (isEditing) {
                     div.innerHTML = `
-                        <div style="width:100%; display:flex; flex-direction:column; gap:6px;" onclick="event.stopPropagation()">
-                            <div style="display:flex; gap:6px; align-items:center;">
-                                <label style="font-size:0.65rem; color:var(--text-muted);">話者:</label>
-                                <input type="text" id="edit-speaker-${item.id}" value="${escapeAttr(item.speaker)}" style="flex:1;">
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:4px;">
-                                <label style="font-size:0.65rem; color:var(--text-muted);">本文（マルチ行OK）:</label>
-                                <textarea id="edit-text-${item.id}" style="width:100%; min-height:90px; font-size:0.8rem; line-height:1.4;">${escapeHTML(item.text)}</textarea>
-                            </div>
-                            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:4px;">
-                                <button onclick="cancelInlineEdit()" style="background:var(--surface); color:var(--text-muted); border:1px solid var(--border); padding:4px 10px;">キャンセル</button>
-                                <button onclick="saveInlineEdit('${item.id}')" style="background:var(--primary); color:#fff; border:none; padding:4px 12px; font-weight:bold;">保存</button>
+                        <div style="display:flex; flex-direction:column; gap:4px;" onclick="event.stopPropagation()">
+                            <input type="text" id="edit-speaker-${item.id}" value="${escapeAttr(item.speaker)}" placeholder="話者">
+                            <textarea id="edit-text-${item.id}" rows="3">${escapeHTML(item.text)}</textarea>
+                            <div style="display:flex; justify-content:flex-end; gap:4px;">
+                                <button onclick="cancelInlineEdit()">キャンセル</button>
+                                <button onclick="saveInlineEdit('${item.id}')" style="background:var(--primary); color:#fff;">保存</button>
                             </div>
                         </div>
                     `;
                 } else {
                     div.innerHTML = `
-                        <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
+                            <strong style="color:var(--text); font-size:0.7rem;">${escapeHTML(item.speaker)}</strong>
+                            ${isSent ? '<span style="color:#34d399; font-size:0.6rem;">✓送信済</span>' : ''}
+                        </div>
+                        <div style="font-size:0.75rem; word-break:break-all;">${escapeHTML(item.text)}</div>
                         <div class="scenario-actions-top">
                             <div class="actions-row">
-                                <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
-                                    ${tabOptionsHTML}
-                                </select>
-                                <button class="scenario-action-btn" onclick="event.stopPropagation(); makeItemIndexByFirstChar('${item.id}')" title="先頭文字を目次化">📌目次</button>
-                                <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')" title="下に追加">+挿入</button>
-                                <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
-                                <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
+                                <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)">${tabOptionsHTML}</select>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); makeItemIndexByFirstChar('${item.id}')">📌目次</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')">+挿入</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)">⬆️</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)">⬇️</button>
                             </div>
-                            <div class="actions-row" style="margin-top:2px;">
-                                <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
-                                <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
-                                <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}', event)" title="改行・分割">✂️分割</button>
-                                <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕削除</button>
+                            <div class="actions-row">
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')">✏️編集</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')">↓結合</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}')">✂️分割</button>
+                                <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')">✕</button>
                             </div>
-                        </div>
-                        <div style="flex:1; min-width:0; margin-top:4px;">
-                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
-                                <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
-                                ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
-                            </div>
-                            <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
                         </div>
                     `;
                     div.onclick = (e) => {
                         if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-                        
-                        const joinedText = item.text;
-                        const payload = item.speaker === 'KP' 
-                            ? joinedText 
-                            : `${item.speaker}：${joinedText}`;
-                            
+                        const payload = item.speaker === 'KP' ? item.text : `${item.speaker}：${item.text}`;
                         cur.sentIds[item.id] = true;
-                        save();
-                        copy(payload);
-                        renderScenarios();
+                        save(); copy(payload); renderScenarios();
                     };
                 }
                 list.appendChild(div);
@@ -901,22 +731,15 @@
         window.toggleCheck = function(e, id) {
             e.stopPropagation();
             const cur = getCur();
-            if (cur.sentIds[id]) {
-                delete cur.sentIds[id];
-            } else {
-                cur.sentIds[id] = true;
-            }
-            save();
-            renderScenarios();
+            if (cur.sentIds[id]) delete cur.sentIds[id];
+            else cur.sentIds[id] = true;
+            save(); renderScenarios();
         };
 
         function escapeHTML(str) {
             return String(str || '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
         }
-
-        function escapeAttr(str) {
-            return String(str || '').replace(/"/g, '&quot;');
-        }
+        function escapeAttr(str) { return String(str || '').replace(/"/g, '&quot;'); }
 
         function renderAll() {
             try {
