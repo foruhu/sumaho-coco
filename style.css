@@ -169,31 +169,22 @@ select {
     font-weight: 600;
 }
 .index-action-btn:hover { background: var(--surface-hover); color: var(--primary); }
-.index-edit-tag {
+
+.index-unified-btn {
     background: none;
     border: none;
     color: var(--text-muted);
-    font-size: 0.6rem;
-    padding: 2px 3px;
+    font-size: 0.65rem;
+    padding: 4px 4px;
     cursor: pointer;
     writing-mode: vertical-rl;
-    border-left: 1px solid rgba(255,255,255,0.05);
-}
-.index-edit-tag:hover { color: var(--primary); background: rgba(99, 102, 241, 0.1); }
-.index-del-btn {
-    background: none;
-    border: none;
-    color: var(--accent-red);
-    padding: 2px 4px;
-    font-size: 0.6rem;
-    cursor: pointer;
-    flex-shrink: 0;
+    text-orientation: upright;
+    border-left: 1px solid rgba(255,255,255,0.08);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-left: 1px solid var(--border);
 }
-.index-del-btn:hover { background: rgba(239, 68, 68, 0.15); }
+.index-unified-btn:hover { color: var(--primary); background: rgba(99, 102, 241, 0.15); }
 
 /* --- Main Content / Scenario List --- */
 .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -333,6 +324,5 @@ textarea {
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
 
-/* インラインエディタ用フォームスタイル */
 .inline-edit-box { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .inline-edit-box input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 4px 6px; border-radius: 4px; font-size: 0.75rem; }
