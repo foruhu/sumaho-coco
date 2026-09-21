@@ -61,7 +61,27 @@
 
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
         
-        #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0d9488; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 0.75rem; font-weight: bold; transition: transform 0.25s ease-out; z-index: 999; max-width: 90%; text-align: center; word-break: break-all; pointer-events: none; }
+        /* 【変更】トースト通知の横幅を画面いっぱいに広げる設定 */
+        #toast { 
+            position: fixed; 
+            bottom: 16px; 
+            left: 50%; 
+            transform: translateX(-50%) translateY(80px); 
+            background: #0d9488; 
+            color: #fff; 
+            padding: 10px 14px; 
+            border-radius: 12px; 
+            font-size: 0.75rem; 
+            font-weight: bold; 
+            transition: transform 0.25s ease-out; 
+            z-index: 999; 
+            width: 92%; 
+            max-width: 500px; 
+            text-align: center; 
+            word-break: break-all; 
+            pointer-events: none; 
+            box-sizing: border-box; 
+        }
         #toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
@@ -242,10 +262,10 @@
 
                 if (colonMatch) {
                     speaker = colonMatch ? colonMatch.toUpperCase() : 'KP';
-                    text = colonMatch[2] || line.trim();
+                    text = colonMatch || line.trim();
                 } else if (bracketMatch) {
                     speaker = bracketMatch || 'KP';
-                    text = bracketMatch[2] || line.trim();
+                    text = bracketMatch || line.trim();
                 }
 
                 cur.scenariosList.push({
@@ -637,7 +657,6 @@
                     div.onclick = (e) => {
                         if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
                         
-                        // 【変更点】改行を完全になくして1行にし、左右の飾りに挟むことで横長感を出す
                         const joinedText = item.text.replace(/\r?\n/g, '　【　】　');
                         const payload = item.speaker === 'KP' 
                             ? `―――[ ${joinedText} ]―――` 
