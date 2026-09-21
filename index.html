@@ -80,7 +80,6 @@
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
         .scenario-item.editing { cursor: default; border-color: var(--primary); background: #121019; }
         
-        /* カード右上操作エリア：多段折り返し対応・右端ゆとり確保 */
         .scenario-actions-top { position: absolute; top: 4px; right: 6px; left: 42px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
         .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
@@ -170,7 +169,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v15';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v16';
         let editingScenarioId = null;
         let activeIndexId = null;
 
@@ -189,8 +188,8 @@
                         '描写': []
                     },
                     scenariosList: [
-                        { id: 's1', tab: '情報', speaker: 'KP', text: '《施設情報》この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。' },
-                        { id: 's2', tab: '描写', speaker: 'KP', text: '【導入シーン】薄暗いロビーに足を踏み入れると、不気味な静寂が迎えてくれる。' }
+                        { id: 's1', tab: '情報', speaker: 'KP', text: 'この施設は「財団」と呼ばれる組織の運営する研究施設であり、名称を「生物ユニット 55」という。', isIndex: true, indexTitle: 'この施' },
+                        { id: 's2', tab: '描写', speaker: 'KP', text: '薄暗いロビーに足を踏み入れると、不気味な静寂が迎えてくれる。' }
                     ],
                     sentIds: {}
                 }
@@ -199,7 +198,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v14') || localStorage.getItem('sumaho_coco_multiscenario_v13');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v15') || localStorage.getItem('sumaho_coco_multiscenario_v14');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -358,7 +357,7 @@
 
                 if (bracketMatch) {
                     speaker = 'KP';
-                    content = text;
+                    content = bracketMatch || bracketMatch;
                 } else {
                     const colonMatch = text.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
                     if (colonMatch) {
@@ -558,7 +557,7 @@
             showToast('途中に挿入しました');
         };
 
-                 // 左のテキストの先頭から数文字を目次タイトルにして目次化する機能
+        // テキストを変更せず、先頭数文字を目次タイトルとして内部保持する機能
         window.makeItemIndexByFirstChar = function(id) {
             const cur = getCur();
             const item = cur.scenariosList.find(s => s.id === id);
@@ -570,25 +569,16 @@
                 return;
             }
 
-            // 先頭の既存の見出し（【】や《》）を除去してから先頭6文字を取得
-            const bodyOnly = item.text.replace(/^[【《].*?[】》]\s*/, '').trim();
-            if (!bodyOnly) {
-                alert('有効なテキストがありません');
-                return;
-            }
+            const charCount = 4;
+            const headingText = trimmedText.slice(0, charCount);
 
-            // 先頭から数文字（例: 6文字。必要に応じて文字数を変更可能）をタイトルに抽出
-            const charCount = 6;
-            const headingText = bodyOnly.slice(0, charCount);
-            const heading = `【${headingText}】`;
-
-            item.text = `${heading}${bodyOnly}`;
+            item.isIndex = true;
+            item.indexTitle = headingText;
 
             save();
             renderScenarios();
-            showToast(`先頭「${headingText}」を目次化しました`);
+            showToast(`先頭「${headingText}」を目次登録しました`);
         };
-
 
         window.deleteIndexBlockAndChildren = function(headerId) {
             const cur = getCur();
@@ -596,15 +586,14 @@
             if (startIdx === -1) return;
 
             const headerItem = cur.scenariosList[startIdx];
-            const headerTitle = headerItem.text.split('\n')[0];
+            const headerTitle = headerItem.indexTitle || (headerItem.text || '').slice(0, 4);
 
             if (!confirm(`目次「${headerTitle}」およびその配下の項目をすべて削除しますか？`)) return;
 
             let deleteCount = 1;
             for (let i = startIdx + 1; i < cur.scenariosList.length; i++) {
                 const s = cur.scenariosList[i];
-                const firstLine = (s.text || '').split('\n')[0].trim();
-                if (/^[【《].*?[】》]/.test(firstLine)) break;
+                if (s.isIndex || s.indexTitle) break;
                 deleteCount++;
             }
 
@@ -632,6 +621,9 @@
             if (speakerInput && textInput) {
                 item.speaker = speakerInput.value.trim() || 'KP';
                 item.text = textInput.value;
+                if (item.indexTitle) {
+                    item.indexTitle = item.text.trim().slice(0, 4);
+                }
                 save();
                 showToast('保存しました');
             }
@@ -755,10 +747,7 @@
             if (!indexBar) return;
             indexBar.innerHTML = '';
 
-            const indexItems = originalList.filter(s => {
-                const firstLine = (s.text || '').split('\n')[0].trim();
-                return /^[【《].*?[】》]/.test(firstLine);
-            });
+            const indexItems = originalList.filter(s => s.isIndex || s.indexTitle);
 
             const allBtn = document.createElement('button');
             allBtn.className = 'scenario-action-btn scenario-index-btn';
@@ -773,14 +762,14 @@
             indexBar.appendChild(allBtn);
 
             indexItems.forEach(item => {
-                const firstLine = item.text.split('\n')[0].trim();
+                const titleText = item.indexTitle || (item.text || '').slice(0, 4);
                 const group = document.createElement('div');
                 group.className = 'index-item-group';
 
                 const btn = document.createElement('button');
                 btn.className = 'scenario-action-btn scenario-index-btn';
-                btn.textContent = firstLine.slice(0, 6);
-                btn.title = firstLine;
+                btn.textContent = titleText.slice(0, 6);
+                btn.title = titleText;
                 const isSelected = activeIndexId === item.id;
                 btn.style.background = isSelected ? 'var(--primary)' : 'var(--bg)';
                 btn.style.color = isSelected ? '#fff' : 'var(--text-muted)';
@@ -835,7 +824,7 @@
                     const sliced = [];
                     for (let i = startIdx; i < allScenarios.length; i++) {
                         const s = allScenarios[i];
-                        const isHeading = i > startIdx && /^[【《].*?[】》]/.test((s.text || '').split('\n')[0].trim());
+                        const isHeading = i > startIdx && (s.isIndex || s.indexTitle);
                         if (isHeading) break;
                         sliced.push(s);
                     }
