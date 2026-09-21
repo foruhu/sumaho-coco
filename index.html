@@ -65,7 +65,21 @@
         #scenarioIndexBar::-webkit-scrollbar { width: 3px; }
         #scenarioIndexBar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
         
-        /* 目次アイテムのカード群 */
+        .index-add-main-btn {
+            width: 100%;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            padding: 4px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        .index-add-main-btn:hover { opacity: 0.9; }
+
         .index-item-group { display: flex; flex-direction: column; gap: 2px; width: 100%; }
         .scenario-index-btn {
             width: 100%;
@@ -182,7 +196,7 @@
     <div id="toast">コピーしました！</div>
 
     <script>
-        const STORAGE_KEY = 'sumaho_coco_multiscenario_v10';
+        const STORAGE_KEY = 'sumaho_coco_multiscenario_v11';
         let editingScenarioId = null;
         let activeIndexId = null;
 
@@ -211,7 +225,7 @@
 
         let allData;
         try {
-            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v9') || localStorage.getItem('sumaho_coco_multiscenario_v8');
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sumaho_coco_multiscenario_v10') || localStorage.getItem('sumaho_coco_multiscenario_v9');
             allData = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData));
             if (!allData.scenarios) allData = JSON.parse(JSON.stringify(defaultData));
         } catch (e) {
@@ -565,13 +579,41 @@
             showToast('途中に挿入しました');
         };
 
-        // 目次直下への項目追加
+        // 新規目次ブロックを追加
+        window.addNewIndexBlock = function() {
+            const cur = getCur();
+            const titleInput = prompt('新しい目次名（例: 【調査フェイズ】 or 《魔力の痕跡》）:');
+            if (titleInput === null || !titleInput.trim()) return;
+            
+            const rawTitle = titleInput.trim();
+            const formattedHeading = (/^[【《].*?[】》]/.test(rawTitle)) ? rawTitle : `【${rawTitle}】`;
+
+            const speaker = prompt('話者:', 'KP');
+            if (speaker === null) return;
+            const textBody = prompt('目次項目の本文（任意、空欄可）:');
+            if (textBody === null) return;
+
+            const fullText = textBody.trim() ? `${formattedHeading}${textBody.trim()}` : formattedHeading;
+            const targetTab = cur.currentTab || cur.tabs[0] || '共通';
+
+            const newItem = {
+                id: 'idx_' + Date.now(),
+                tab: targetTab,
+                speaker: speaker.trim() || 'KP',
+                text: fullText
+            };
+
+            cur.scenariosList.push(newItem);
+            save();
+            renderScenarios();
+            showToast('新しい目次を追加しました');
+        };
+
         window.insertUnderIndex = function(targetId) {
             const cur = getCur();
             const idx = cur.scenariosList.findIndex(s => s.id === targetId);
             if (idx === -1) return;
             
-            // 次の目次手前、またはリストの終わりまでを探す
             let insertPos = idx + 1;
             while (insertPos < cur.scenariosList.length) {
                 const s = cur.scenariosList[insertPos];
@@ -592,6 +634,7 @@
                 speaker: speaker.trim() || 'KP',
                 text: text
             };
+
             cur.scenariosList.splice(insertPos, 0, newItem);
             save();
             renderScenarios();
@@ -735,16 +778,17 @@
             if (!indexBar) return;
             indexBar.innerHTML = '';
 
+            const addMainBtn = document.createElement('button');
+            addMainBtn.className = 'index-add-main-btn';
+            addMainBtn.textContent = '+目次追加';
+            addMainBtn.title = '新しい目次項目を追加';
+            addMainBtn.onclick = () => addNewIndexBlock();
+            indexBar.appendChild(addMainBtn);
+
             const indexItems = originalList.filter(s => {
                 const firstLine = (s.text || '').split('\n')[0].trim();
                 return /^[【《].*?[】》]/.test(firstLine);
             });
-
-            if (indexItems.length === 0) {
-                indexBar.style.display = 'none';
-                return;
-            }
-            indexBar.style.display = 'flex';
 
             const allBtn = document.createElement('button');
             allBtn.className = 'scenario-action-btn scenario-index-btn';
