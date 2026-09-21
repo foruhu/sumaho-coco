@@ -181,7 +181,7 @@ function parseAndImportText() {
 
         if (colonMatch) {
             speaker = colonMatch.toUpperCase();
-            text = colonMatch[2];
+            text = colonMatch;
         } else if (bracketMatch) {
             speaker = 'KP';
             text = line.trim();
