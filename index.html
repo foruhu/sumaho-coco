@@ -275,6 +275,42 @@
             renderGrid();
             renderScenarios();
         }
+        
+        function doBatchImport() {
+    const raw = document.getElementById('batchText').value;
+    if (!raw.trim()) return;
+    const cur = getCur();
+    const lines = raw.split(/\r?\n/).filter(l => l.trim() !== '');
+    
+    lines.forEach((line, idx) => {
+        let speaker = 'KP';
+        let text = line.trim();
+        // 「PC1: ...」「KP：...」「【PC1】...」の簡易パース
+        const colonMatch = line.match(/^(PC\d+|KP|GM)[：:]\s*(.*)$/i);
+        const bracketMatch = line.match(/^【(.*?)】\s*(.*)$/);
+
+        if (colonMatch) {
+            speaker = colonMatch.toUpperCase();
+            text = colonMatch;
+        } else if (bracketMatch) {
+            speaker = bracketMatch;
+            text = bracketMatch;
+        }
+
+        cur.scenariosList.push({
+            id: 'imp_' + Date.now() + '_' + idx,
+            tab: cur.currentTab,
+            speaker: speaker,
+            text: text
+        });
+    });
+
+    document.getElementById('batchText').value = '';
+    save();
+    renderScenarios();
+    showToast('一括インポート完了！');
+}
+
 
         renderAll();
     </script>
