@@ -37,10 +37,12 @@
         
         .import-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
         .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
-        .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); }
+        .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px; }
+        .scenario-search-box { width: 100%; margin-bottom: 8px; }
+        .scenario-search-box input { width: 100%; font-size: 0.75rem; }
         
         #scenarioList {
-            max-height: 55vh;
+            max-height: 50vh;
             overflow-y: auto;
             padding-right: 4px;
         }
@@ -125,6 +127,9 @@
                 <span id="scenarioProgress" style="margin-right:8px;">0 / 0 完了</span>
                 <button onclick="clearAllScenarios()" style="font-size:0.65rem; padding:2px 6px; color:#ef4444; background:none; border:1px solid #ef4444; border-radius:4px; cursor:pointer;">全シナリオクリア</button>
             </span>
+        </div>
+        <div class="scenario-search-box">
+            <input type="text" id="scenarioSearchInput" placeholder="🔍 話者・本文で検索..." oninput="renderScenarios()">
         </div>
         <div id="scenarioList"></div>
     </div>
@@ -600,12 +605,20 @@
             const sentCount = allScenarios.filter(s => cur.sentIds[s.id]).length;
             document.getElementById('scenarioProgress').textContent = `${sentCount} / ${allScenarios.length} 完了`;
 
-            if (allScenarios.length === 0) {
-                list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:16px;">登録された文章はありません</div>';
+            const searchInput = document.getElementById('scenarioSearchInput');
+            const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+            const filteredScenarios = query ? allScenarios.filter(item => {
+                return (item.speaker && item.speaker.toLowerCase().includes(query)) ||
+                       (item.text && item.text.toLowerCase().includes(query));
+            }) : allScenarios;
+
+            if (filteredScenarios.length === 0) {
+                list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:16px;">該当する文章はありません</div>';
                 return;
             }
 
-            allScenarios.forEach(item => {
+            filteredScenarios.forEach(item => {
                 const isSent = !!cur.sentIds[item.id];
                 const isEditing = editingScenarioId === item.id;
                 const div = document.createElement('div');
@@ -647,7 +660,7 @@
                         </div>
                         <div style="flex:1; min-width:0;">
                             <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
-                                <strong style="color:var::text);">${escapeHTML(item.speaker)}</strong>
+                                <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
                                 ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                             </div>
                             <div class="text-body" style="font-size:0.8rem; line-height:1.4; word-break:break-all;">${escapeHTML(item.text)}</div>
