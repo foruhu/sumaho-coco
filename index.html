@@ -36,6 +36,9 @@
         .del-btn { position: absolute; top: 2px; right: 4px; font-size: 0.6rem; color: #ef4444; background: none; border: none; padding: 2px 4px; cursor: pointer; }
         
         .import-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+        .data-io-bar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+        .data-io-bar button { flex: 1; min-width: 120px; font-size: 0.7rem; padding: 5px 8px; cursor: pointer; }
+
         .scenario-section { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
         .scenario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px; }
         .scenario-search-box { width: 100%; margin-bottom: 8px; }
@@ -105,7 +108,14 @@
     <div class="tab-bar" id="tabBar"></div>
 
     <div class="import-section">
-        <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">📂 ファイル読込（PDF / Word(.docx) / TXT抽出）</div>
+        <div style="font-weight:bold; color:var(--text); margin-bottom:6px; font-size:0.75rem;">💾 データ保存・バックアップ・読込</div>
+        <div class="data-io-bar">
+            <button onclick="exportDataJson()" style="background:#3b82f6; color:#fff; border:none; border-radius:6px;">📤 JSON保存（エクスポート）</button>
+            <button onclick="importDataJsonPrompt()" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px;">📥 JSON復元（インポート）</button>
+        </div>
+        <input type="file" id="jsonFileInput" accept=".json" style="display:none;" onchange="handleJsonFileSelect(event)">
+        
+        <div style="font-weight:bold; color:var(--text); margin: 10px 0 6px 0; font-size:0.75rem;">📂 ファイル読込（PDF / Word(.docx) / TXT抽出）</div>
         <input type="file" id="fileInput" accept=".txt,.json,.csv,.md,.pdf,.docx" style="width:100%; margin-bottom:6px; font-size:0.7rem;">
         <textarea id="importPreview" placeholder="ここに抽出されたテキスト、または直接ペーストした文章を解析・登録します" style="width:100%; height:55px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px; font-size:0.75rem; box-sizing:border-box; margin-bottom:6px;"></textarea>
         <button onclick="parseAndImportText()" style="background:var(--primary); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.75rem; cursor:pointer; width:100%;">抽出テキストを全件に登録</button>
@@ -187,6 +197,45 @@
             } catch (e) {
                 showToast('保存容量オーバーの可能性があります');
             }
+        }
+
+        function exportDataJson() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `sumaho_coco_backup_${Date.now()}.json`);
+            dlAnchorElem.click();
+            showToast('JSONファイルを書き出しました');
+        }
+
+        function importDataJsonPrompt() {
+            document.getElementById('jsonFileInput').click();
+        }
+
+        function handleJsonFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && parsed.scenarios && parsed.currentScenario) {
+                        if (confirm('現在のデータを上書きしてJSONを復元しますか？')) {
+                            allData = parsed;
+                            editingScenarioId = null;
+                            save();
+                            renderAll();
+                            showToast('JSONデータを復元しました');
+                        }
+                    } else {
+                        alert('不正な形式のJSONファイルです');
+                    }
+                } catch (err) {
+                    alert('JSONファイルの読み込みに失敗しました');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
         }
 
         function resetAllData() {
