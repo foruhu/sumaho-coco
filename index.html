@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sumaho-coco セッション支援</title>
-    <!-- PDF.js & Mammoth.js (Word/PDFパース用CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -242,10 +241,10 @@
                 const bracketMatch = line.match(/^【(.*?)】\s*(.*)$/);
 
                 if (colonMatch) {
-                    speaker = colonMatch[1] ? colonMatch[1].toUpperCase() : 'KP';
+                    speaker = colonMatch ? colonMatch.toUpperCase() : 'KP';
                     text = colonMatch[2] || line.trim();
                 } else if (bracketMatch) {
-                    speaker = bracketMatch[1] || 'KP';
+                    speaker = bracketMatch || 'KP';
                     text = bracketMatch[2] || line.trim();
                 }
 
@@ -544,7 +543,6 @@
             renderScenarios();
         }
 
-        // --- 一定時間で確実に消えるトースト制御（連打対策付き） ---
         let toastTimer = null;
         function showToast(msg) {
             const t = document.getElementById('toast');
@@ -569,8 +567,7 @@
                 const div = document.createElement('div');
                 div.className = 'btn';
                 div.innerHTML = `${escapeHTML(item.label)}<button class="del-btn" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>`;
-                // ボタン側も広げたい場合は全角スペースを挟むように拡張可
-                div.onclick = () => copy(item.text.replace(/\r?\n/g, ' 　 '));
+                div.onclick = () => copy('―――[ ' + item.text.replace(/\r?\n/g, '　【　】　') + ' ]―――');
                 grid.appendChild(div);
             });
         }
@@ -639,9 +636,13 @@
                     `;
                     div.onclick = (e) => {
                         if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-                        const rawPayload = item.speaker === 'KP' ? item.text : `${item.speaker}「${item.text}」`;
-                        // ワイド化：改行を「全角スペース + スペーサー + 全角スペース」に変換して横長感を拡張
-                        const payload = rawPayload.replace(/\r?\n/g, '　 ── 　');
+                        
+                        // 【変更点】改行を完全になくして1行にし、左右の飾りに挟むことで横長感を出す
+                        const joinedText = item.text.replace(/\r?\n/g, '　【　】　');
+                        const payload = item.speaker === 'KP' 
+                            ? `―――[ ${joinedText} ]―――` 
+                            : `${item.speaker}：―――[ ${joinedText} ]―――`;
+                            
                         cur.sentIds[item.id] = true;
                         save();
                         copy(payload);
