@@ -47,7 +47,7 @@
         #scenarioList {
             flex: 1;
             min-width: 0;
-            max-height: 48vh;
+            max-height: 52vh;
             overflow-y: auto;
             padding-right: 4px;
         }
@@ -58,7 +58,7 @@
             gap: 4px;
             width: 110px;
             flex-shrink: 0;
-            max-height: 48vh;
+            max-height: 52vh;
             overflow-y: auto;
             padding-left: 2px;
         }
@@ -75,20 +75,26 @@
             flex: 1;
         }
 
-        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 52px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
+        /* 2段配置に対応するため上のパディングを広めに確保 */
+        .scenario-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; padding-top: 68px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; transition: opacity 0.2s, border-color 0.3s; position: relative; }
         .scenario-item.sent { opacity: 0.55; background: #09090b; border-color: #1f1f23; }
         .scenario-item.sent .text-body { text-decoration: line-through; color: var(--text-muted); }
         .scenario-item.editing { cursor: default; border-color: var(--primary); background: #121019; }
         
-        .scenario-actions-top { position: absolute; top: 4px; right: 6px; left: 42px; display: flex; gap: 3px; align-items: center; z-index: 2; flex-wrap: wrap; }
+        /* 2段アクションバー */
+        .scenario-actions-top { 
+            position: absolute; top: 4px; right: 6px; left: 38px; 
+            display: flex; flex-direction: column; gap: 3px; z-index: 2; 
+        }
+        .actions-row { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+        
         .scenario-action-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 0.6rem; padding: 2px 5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         .scenario-action-btn:hover { color: var(--text); border-color: var(--primary); }
         
-        /* ✕削除ボタンに視認性とマージンを持たせる */
-        .scenario-del-btn { background: var(--bg); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 6px; cursor: pointer; flex-shrink: 0; margin-left: 4px; }
+        .scenario-del-btn { background: var(--bg); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 4px; color: #ef4444; font-size: 0.6rem; padding: 2px 8px; cursor: pointer; flex-shrink: 0; margin-left: auto; }
         .scenario-del-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
 
-        .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; }
+        .item-tab-select { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; font-size: 0.65rem; padding: 2px 4px; cursor: pointer; margin-right: auto; }
         .text-body { user-select: text; -webkit-user-select: text; white-space: pre-wrap; }
 
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
@@ -697,7 +703,6 @@
             renderScenarios();
         };
 
-        // 誤押し対策の確認ダイアログ付き削除関数
         window.deleteScenarioItem = function(id) {
             if (!confirm('この項目を本当に削除しますか？')) return;
             const cur = getCur();
@@ -844,20 +849,24 @@
                     div.innerHTML = `
                         <input type="checkbox" ${isSent ? 'checked' : ''} onchange="toggleCheck(event, '${item.id}')">
                         <div class="scenario-actions-top">
-                            <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
-                                ${tabOptionsHTML}
-                            </select>
-                            <button class="scenario-action-btn" onclick="event.stopPropagation(); makeItemIndexByFirstChar('${item.id}')" title="先頭文字を目次化">📌目次追加</button>
-                            <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')" title="この下に追加">+挿入</button>
-                            <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
-                            <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
-                            <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
-                            <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
-                            <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}', event)" title="改行・分割">✂️分割</button>
-                            <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕</button>
+                            <div class="actions-row">
+                                <select class="item-tab-select" onclick="event.stopPropagation()" onchange="changeItemTab('${item.id}', this.value)" title="所属タブ変更">
+                                    ${tabOptionsHTML}
+                                </select>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); makeItemIndexByFirstChar('${item.id}')" title="先頭文字を目次化">📌目次</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); insertScenarioItemAfter('${item.id}')" title="この下に追加">+挿入</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', -1)" title="上に移動">⬆️</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); moveScenarioItem('${item.id}', 1)" title="下に移動">⬇️</button>
+                            </div>
+                            <div class="actions-row" style="margin-top:2px;">
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); editScenarioItem('${item.id}')" title="編集">✏️編集</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); mergeScenarioItemNext('${item.id}')" title="下の項目と結合">↓結合</button>
+                                <button class="scenario-action-btn" onclick="event.stopPropagation(); splitScenarioItem('${item.id}', event)" title="改行・分割">✂️分割</button>
+                                <button class="scenario-del-btn" onclick="event.stopPropagation(); deleteScenarioItem('${item.id}')" title="削除">✕削除</button>
+                            </div>
                         </div>
-                        <div style="flex:1; min-width:0;">
-                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px; padding-right: 210px;">
+                        <div style="flex:1; min-width:0; margin-top:4px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
                                 <strong style="color:var(--text);">${escapeHTML(item.speaker)}</strong>
                                 ${isSent ? '<span style="color:#34d399;">✓ 送信済み</span>' : ''}
                             </div>
