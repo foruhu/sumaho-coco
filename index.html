@@ -1,67 +1,433 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sumaho-coco Pro（GM支援ツール）</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>ネクロニカ キャラクターシート</title>
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header>
-            <h2><span>📱</span> <span>Sumaho-coco</span></h2>
-            <div class="toolbar">
-                <button onclick="undoAction()" style="background:var(--accent-amber); color:#fff; border:none;" title="直前の操作に戻す">↩️戻す</button>
-                <button onclick="addTab()">+タブ</button>
-                <button onclick="exportDataJson()">保存</button>
-                <button onclick="importDataJsonPrompt()">読込</button>
-                <button onclick="resetAllData()" style="color:var(--accent-red); border-color:var(--accent-red);">初期化</button>
-            </div>
-            <input type="file" id="jsonFileInput" style="display:none" accept=".json" onchange="handleJsonFileSelect(event)">
-        </header>
 
-        <!-- Scenario Selector -->
-        <div class="scenario-select-area">
-            <select id="scenarioSelect" onchange="switchScenario(this.value)"></select>
-            <button onclick="addScenario()">+シナリオ</button>
-        </div>
+<h1>永い後日談のネクロニカ</h1>
 
-        <!-- Tab Bar -->
-        <div class="tab-bar" id="tabBar"></div>
-        
-        <!-- Quick Grid Items -->
-        <div class="grid-container" id="buttonGrid"></div>
+<div id="view-mode-image-container" style="display:none;"></div>
 
-        <!-- Vertical Index Bar -->
-        <div class="index-bar" id="scenarioIndexBar"></div>
-
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="search-area">
-                <input type="text" id="scenarioSearchInput" placeholder="話者・本文で検索..." oninput="renderScenarios()">
-                <span id="scenarioProgress" style="white-space:nowrap; font-weight:600; color:var(--text-muted);">0/0</span>
-                <button onclick="toggleAllSentCollapse()" id="collapseAllBtn" title="送信済みの全体折り畳み/展開">全折り畳み</button>
-                <button onclick="resetAllChecks()">全未送信化</button>
-                <button onclick="deleteCheckedScenarios()" style="color:var(--accent-red);">選択消去</button>
-            </div>
-            <div class="scenario-list" id="scenarioList"></div>
-        </div>
-
-        <!-- Import Area -->
-        <div class="import-area">
-            <div style="display:flex; gap:4px; align-items:center;">
-                <input type="file" id="fileInput" accept=".txt,.pdf,.docx" style="font-size:0.65rem; flex:1; color:var(--text-muted);">
-                <button onclick="parseAndImportText()">インポート</button>
-            </div>
-            <textarea id="importPreview" placeholder="テキスト直貼り付けまたはファイル（.txt/.pdf/.docx）を読み込み" rows="1"></textarea>
-        </div>
+<div class="card sticky-top-bar">
+  <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; padding: 2px;">
+    <button type="button" class="view-only char-switch-btn" onclick="exportViewURL()" style="border-color:#2e6a8a; color:#7ac4f0;">👀 閲覧用URLを作成</button>
+    <div class="edit-only" style="display: flex; justify-content: space-between; align-items: center;">
+      <button type="button" class="undo-btn" id="undo-btn" onclick="undoLastAction()" disabled>↩️ 元に戻す</button>
+      <span id="autosave-status"></span>
     </div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="color:#ff6b6b; font-weight:bold;">武装</span>
+      <span>
+        Lv1: <span id="used-wep-lv1">0</span>/<span id="max-wep-lv1">0</span> | 
+        Lv2: <span id="used-wep-lv2">0</span>/<span id="max-wep-lv2">0</span> | 
+        Lv3: <span id="used-wep-lv3">0</span>/<span id="max-wep-lv3">0</span>
+      </span>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="color:#4dabf7; font-weight:bold;">変異</span>
+      <span>
+        Lv1: <span id="used-mut-lv1">0</span>/<span id="max-mut-lv1">0</span> | 
+        Lv2: <span id="used-mut-lv2">0</span>/<span id="max-mut-lv2">0</span> | 
+        Lv3: <span id="used-mut-lv3">0</span>/<span id="max-mut-lv3">0</span>
+      </span>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="color:#ffd43b; font-weight:bold;">改造</span>
+      <span>
+        Lv1: <span id="used-cyb-lv1">0</span>/<span id="max-cyb-lv1">0</span> | 
+        Lv2: <span id="used-cyb-lv2">0</span>/<span id="max-cyb-lv2">0</span> | 
+        Lv3: <span id="used-cyb-lv3">0</span>/<span id="max-cyb-lv3">0</span>
+      </span>
+    </div>
+  </div>
+</div>
 
-    <div class="toast" id="toast"></div>
+<div class="card">
+  <div class="title">基本情報・強化値計算 & レベル取得制限チェッカー</div>
+  <div class="g2">
+    <div><label>PL名</label><input type="text" id="pl"></div>
+    <div><label>ドール名</label><input type="text" id="name"></div>
+  </div>
+  <div class="table-scroll">
+    <table class="calc-table">
+      <thead>
+        <tr>
+          <th style="width:30%">区分</th>
+          <th style="width:34%">選択</th>
+          <th style="width:12%">武装</th>
+          <th style="width:12%">変異</th>
+          <th style="width:12%">改造</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="label-cell">ポジション：</td>
+          <td>
+            <select id="pos" onchange="onClassChange()">
+              <option>アリス</option><option>ホリック</option><option>オートマトン</option><option>ジャンク</option><option>コート</option><option>ソロリティ</option>
+            </select>
+          </td>
+          <td>-</td><td>-</td><td>-</td>
+        </tr>
+        <tr>
+          <td class="label-cell">メインクラス：</td>
+          <td>
+            <select id="mc" onchange="onClassChange()">
+              <option selected>ロマネスク</option><option>ステーシー</option><option>タナトス</option><option>レクイエム</option><option>バロック</option><option>ホリック</option><option>ゴシック</option>
+            </select>
+          </td>
+          <td id="mc-wep">0</td><td id="mc-mut">0</td><td id="mc-cyb">2</td>
+        </tr>
+        <tr>
+          <td class="label-cell">サブクラス：</td>
+          <td>
+            <select id="sc" onchange="onClassChange()">
+              <option selected>ステーシー</option><option>タナトス</option><option>ゴシック</option><option>レクイエム</option><option>バロック</option><option>ロマネスク</option>
+            </select>
+          </td>
+          <td id="sc-wep">0</td><td id="sc-mut">0</td><td id="sc-cyb">2</td>
+        </tr>
+        <tr>
+          <td class="label-cell">ボーナス：</td>
+          <td style="color:#aaa;font-size:.75rem">いずれか+1</td>
+          <td><input type="radio" name="bonus" value="wep" checked onchange="calcTotals()"></td>
+          <td><input type="radio" name="bonus" value="mut" onchange="calcTotals()"></td>
+          <td><input type="radio" name="bonus" value="cyb" onchange="calcTotals()"></td>
+        </tr>
+        <tr>
+          <td class="label-cell">寵愛による修正：</td>
+          <td style="color:#aaa;font-size:.75rem">手入力加算</td>
+          <td><input type="number" id="chouai-wep" value="0" min="0" oninput="calcTotals()"></td>
+          <td><input type="number" id="chouai-mut" value="0" min="0" oninput="calcTotals()"></td>
+          <td><input type="number" id="chouai-cyb" value="0" min="0" oninput="calcTotals()"></td>
+        </tr>
+        <tr class="total-row">
+          <td class="label-cell" style="color:#ffaaaa">総計</td>
+          <td style="font-size:.75rem;color:#ccc">パーツ配置上限</td>
+          <td id="total-wep">1</td>
+          <td id="total-mut">0</td>
+          <td id="total-cyb">5</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-    <script src="app.js"></script>
+  <div class="table-scroll">
+    <table class="limit-table">
+      <thead>
+        <tr>
+          <th style="width:20%">カテゴリ</th>
+          <th style="width:12%">レベル</th>
+          <th style="width:18%">規定上限</th>
+          <th style="width:15%">現在取得</th>
+          <th style="width:20%">判定</th>
+        </tr>
+      </thead>
+      <tbody id="limit-tbody"></tbody>
+    </table>
+    <div style="font-size:0.7rem; color:#aaa; margin-top:4px; text-align:right;">
+      ※「時計仕掛け」「業躯」のスキルを選ぶとLv3の追加枠が自動で+1されます
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:8px;">
+    <div><label>享年/外見</label><input type="text" id="age"></div>
+    <div><label>初期配置</label>
+      <select id="ps">
+        <option>煉獄</option><option>花園</option><option>楽園</option>
+      </select>
+    </div>
+  </div>
+  <div class="g2">
+    <div><label>暗示</label><input type="text" id="hint"></div>
+    <div></div>
+  </div>
+  <div style="margin-bottom:6px;">
+    <label>記憶のカケラ（入手した数だけ追加できます）</label>
+    <div id="memory-list"></div>
+    <button type="button" class="sec edit-only" onclick="addMemoryEntry()" style="width:100%;margin-top:2px;padding:4px;">+ 記憶のカケラ枠を追加</button>
+  </div>
+  <div class="g2">
+    <div>
+      <label>最大行動値（自動計算）</label>
+      <input type="number" id="act" value="10" readonly style="font-weight:bold;color:#f0a0a0;">
+      <div id="act-breakdown" style="font-size:0.68rem;color:#888;margin-top:2px;"></div>
+    </div>
+    <div>
+      <label>基本行動値</label>
+      <input type="number" id="act-base" value="6" oninput="calcActionValue()">
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="title">習得スキル</div>
+  <div class="table-scroll">
+    <table class="sheet-table maneuver-table">
+      <thead>
+        <tr>
+          <th style="width:6%;">使</th>
+          <th style="width:13%;">区分</th>
+          <th style="width:7%;" class="color-col">色</th>
+          <th style="width:20%;">スキル名</th>
+          <th style="width:13%;">タイミング</th>
+          <th style="width:10%;">コスト</th>
+          <th style="width:10%;">射程</th>
+          <th style="width:12%;" class="col-op">操作</th>
+        </tr>
+      </thead>
+      <tbody id="skill-tbody"></tbody>
+    </table>
+  </div>
+  <div style="margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+    <button type="button" class="sec edit-only" onclick="addPosSkillRow()" style="width:100%;padding:6px">+ ポジション</button>
+    <button type="button" class="sec edit-only" onclick="addMcSkillRow()" style="width:100%;padding:6px">+ メインクラス</button>
+    <button type="button" class="sec edit-only" onclick="addScSkillRow()" style="width:100%;padding:6px">+ サブクラス</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+    <span>マニューバ</span>
+    <span style="display:flex;gap:4px;">
+      <button type="button" class="sec edit-only" onclick="resetPartUsedFlags()" style="font-size:.7rem;padding:2px 6px">使用チェックを一括解除</button>
+      <button type="button" class="sec edit-only" onclick="resetUsed()" style="font-size:.7rem;padding:2px 6px">破損チェックを一括解除</button>
+    </span>
+  </div>
+  <div id="parts-container"></div>
+</div>
+
+<div class="card">
+  <div class="title">たからもの・未練（姉妹への感情）</div>
+  <div style="margin-bottom:6px">
+    <label>たからもの（入手した数だけ追加できます）</label>
+    <div id="treasure-list"></div>
+    <button type="button" class="sec edit-only" onclick="addTreasureEntry()" style="width:100%;margin-top:2px;padding:4px;">+ たからもの枠を追加</button>
+    <div style="font-size:0.68rem;color:#888;margin-top:4px;">
+      オート／バトルパート終了時、狂気点を1点回復。損傷時に所持パーツから取り除かれます。
+    </div>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:25%">対象（姉妹）</th>
+          <th style="width:25%">未練（感情）</th>
+          <th style="width:35%">狂気点</th>
+          <th style="width:15%" class="col-op">操作</th>
+        </tr>
+      </thead>
+      <tbody id="list"></tbody>
+    </table>
+  </div>
+  <button type="button" class="sec edit-only" onclick="addRow()" style="width:100%;margin-top:4px;padding:4px">+ 未練枠を追加</button>
+</div>
+
+<!-- 寵愛点サマリー -->
+<div style="background: #25252e; padding: 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #444;">
+  <h3 style="margin-top: 0; color: #8ff; font-size: 1rem; border-bottom: 1px solid #555; padding-bottom: 4px;">寵愛点サマリー</h3>
+  <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.9rem;">
+    <div>獲得戦闘寵愛: <b id="total-battle-chouai" style="color: #8ff;">0</b> pt</div>
+    <div>獲得個人寵愛: <b id="total-personal-chouai" style="color: #8ff;">0</b> pt</div>
+    <div>総獲得寵愛: <b id="total-earned-chouai" style="color: #8ff;">0</b> pt</div>
+    <div>総使用寵愛: <b id="total-used-chouai" style="color: #ff88c2;">0</b> pt</div>
+    <div style="font-size: 1.05rem;">現在の残り寵愛: <b id="current-chouai" style="color: #8ff; font-size: 1.2rem;">0</b> pt</div>
+  </div>
+</div>
+
+<!-- セッション履歴（獲得） -->
+<h3 style="color: #ccc; font-size: 0.95rem; margin-bottom: 6px;">■ セッション履歴（獲得寵愛）</h3>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.85rem;">
+  <thead>
+    <tr style="background: #1e1e24; color: #aaa; text-align: center;">
+      <th style="padding: 6px; border: 1px solid #444;">シナリオ名</th>
+      <th style="padding: 6px; border: 1px solid #444; width: 80px;">戦闘寵愛</th>
+      <th style="padding: 6px; border: 1px solid #444; width: 80px;">個人寵愛</th>
+      <th style="padding: 6px; border: 1px solid #444;">メモ（参加日など）</th>
+      <th style="padding: 6px; border: 1px solid #444; width: 40px;" class="col-op">削除</th>
+    </tr>
+  </thead>
+  <tbody id="session-history-tbody"></tbody>
+</table>
+<button type="button" class="sec edit-only" onclick="addSessionHistoryRow()" style="background: #333; color: #fff; border: 1px solid #666; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-bottom: 20px;">+ 履歴を追加</button>
+
+<!-- 寵愛点の使い道（消費） -->
+<h3 style="color: #ccc; font-size: 0.95rem; margin-bottom: 6px;">■ 寵愛点の使い道・強化履歴</h3>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 0.85rem;">
+  <thead>
+    <tr style="background: #1e1e24; color: #aaa; text-align: center;">
+      <th style="padding: 6px; border: 1px solid #444; width: 110px;">使用点数</th>
+      <th style="padding: 6px; border: 1px solid #444;">使い道・備考（例: 武装基本値+1、基本パーツ修復など）</th>
+      <th style="padding: 6px; border: 1px solid #444; width: 40px;" class="col-op">削除</th>
+    </tr>
+  </thead>
+  <tbody id="chouai-use-tbody"></tbody>
+</table>
+<button type="button" class="sec edit-only" onclick="addChouaiUseRow()" style="background: #333; color: #fff; border: 1px solid #666; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">+ 使い道を追加</button>
+
+<div class="card edit-only">
+  <div class="title">キャラクター管理（複数保存）</div>
+
+  <label style="margin-bottom:4px;">保存済みキャラクター（タップで選択）</label>
+  <div class="save-cards-row" id="save-cards"></div>
+  <select id="save-slot" style="display:none">
+    <option value="">-- 新規保存 --</option>
+  </select>
+
+  <div class="action-btn-row">
+    <button type="button" class="action-btn c-green" onclick="saveData()">
+      <span class="icon">💾</span><span>ブラウザに<br>保存</span>
+    </button>
+    <button type="button" class="action-btn c-blue" onclick="loadData()">
+      <span class="icon">📂</span><span>データを<br>読み込む</span>
+    </button>
+  </div>
+
+  <div id="selected-actions" style="display:none;">
+    <div style="font-size:0.72rem; color:#f0a0a0; margin: 6px 0 2px 2px;">▼ 選択中のキャラクターの操作</div>
+    <div class="action-btn-row">
+      <button type="button" class="action-btn c-red" onclick="deleteSelectedSave()">
+        <span class="icon">🗑</span><span>削除</span>
+      </button>
+      <button type="button" class="action-btn c-pink" onclick="duplicateSelectedSave()">
+        <span class="icon">📋</span><span>複製</span>
+      </button>
+      <button type="button" class="action-btn c-pink" onclick="document.getElementById('thumb-file-input').click()">
+        <span class="icon">🖼</span><span>画像を設定</span>
+      </button>
+      <button type="button" class="action-btn c-red" onclick="clearSelectedThumbnail()">
+        <span class="icon">🚫</span><span>ノーイメージ<br>に戻す</span>
+      </button>
+    </div>
+  </div>
+  <input type="file" id="thumb-file-input" accept="image/*" style="display:none" onchange="onThumbFileSelected(event)">
+
+  <button type="button" class="edit-only" id="export-share-toggle" onclick="toggleExportShareSection()" style="
+    width:100%; margin-top:8px; padding:6px; background:#1c1c22; color:#aaa;
+    border:1px dashed var(--border); border-radius:4px; font-size:.78rem; cursor:pointer;
+  ">▼ 出力・共有オプションを表示</button>
+
+  <div id="export-share-section" style="display:none;">
+    <div class="action-btn-row">
+      <button type="button" class="action-btn c-orange" onclick="exportJSON()">
+        <span class="icon">📄</span><span>JSON<br>出力</span>
+      </button>
+      <button type="button" class="action-btn c-teal" onclick="document.getElementById('json-file-input').click()">
+        <span class="icon">📁</span><span>JSONを<br>読み込む</span>
+      </button>
+      <button type="button" class="action-btn c-purple" onclick="exportCcfolia()">
+        <span class="icon">🎲</span><span>ココフォリア<br>出力</span>
+      </button>
+    </div>
+    <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="onJsonFileSelected(event)">
+    <div class="action-btn-row">
+      <button type="button" class="action-btn c-yellow" onclick="exportShareURL()">
+        <span class="icon">🔗</span><span>共有URLを<br>作成</span>
+      </button>
+      <button type="button" class="action-btn c-teal" onclick="exportViewURL()">
+        <span class="icon">👀</span><span>閲覧用URLを<br>作成</span>
+      </button>
+    </div>
+    <div class="action-btn-row">
+      <button type="button" class="action-btn c-cyan" onclick="exportShareCode()">
+        <span class="icon">📤</span><span>共有コードを<br>作成</span>
+      </button>
+      <button type="button" class="action-btn c-purple" onclick="importShareCode()">
+        <span class="icon">📥</span><span>共有コードから<br>読み込む</span>
+      </button>
+    </div>
+    <div style="font-size:0.7rem; color:#888; margin-top:4px;">
+      ※他のブラウザ・端末に移したい場合は「JSON出力」→別端末で「JSONを読み込む」、または「共有URLを作成」してURLを送り、相手がそのURLを開くと自動で読み込まれます。「閲覧用URL」は開くと自動的に表示モード(編集不可)になる専用のリンクです(相手のブラウザには保存されません)。「共有コード」は文字列をコピー&貼り付けする方式です。
+    </div>
+  </div>
+
+  <div style="font-size:0.7rem; color:#888; margin-top:8px;">
+    ※カードをタップしてキャラクターを選択すると、削除・複製・画像設定のボタンが出てきます。「新規保存」のまま保存すると名前を聞かれて新しいキャラとして保存されます。<br>
+    ※未保存の変更がある場合、一定時間ごとに自動でブラウザに保存されます（画面上部に保存時刻が表示されます）。
+  </div>
+</div>
+
+<!-- 左下固定：スクロールしても常に見える保存ボタン -->
+<button type="button" class="edit-only" onclick="saveData()" style="
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background: #14211a;
+  color: #7fe3a8;
+  border: 1.5px solid #2f6b4f;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  font-family: sans-serif;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+  z-index: 9999;
+  cursor: pointer;
+">💾 保存</button>
+
+<!-- 左下固定：キャラクター切替（小さく、スクロールしても常に見える） -->
+<button type="button" class="corner-btn" onclick="openCharSwitcher()" style="
+  bottom: 66px;
+  background: #17182c;
+  color: #9aa4ff;
+  border: 1.5px solid #2e6a8a;
+">🔄 切替</button>
+
+<!-- 左下固定：表示モード／編集モードの切替（小さく、スクロールしても常に見える） -->
+<button type="button" id="view-mode-toggle" class="corner-btn" onclick="toggleViewMode()" style="
+  bottom: 112px;
+  background: #1a1a20;
+  color: #f0a0a0;
+  border: 1.5px solid #8b0000;
+">🔒 表示</button>
+
+<!-- 右下固定：README.mdへ移動するボタン -->
+<a href="./README.md" target="_blank" rel="noopener noreferrer" style="
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #1e1e24;
+  color: #8ff;
+  border: 1px solid #555;
+  padding: 8px 14px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: bold;
+">
+  📜 使い方を見る
+</a>
+
+<!-- キャラクター切替オーバーレイ -->
+<div id="char-switch-overlay" style="
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75);
+  z-index:10000; padding:16px; overflow-y:auto;
+" onclick="if(event.target===this) closeCharSwitcher()">
+  <div style="max-width:480px; margin:30px auto; background:#18181c; border:1.5px solid #8b0000; border-radius:10px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,0.7);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span style="color:#f0a0a0; font-weight:bold; font-size:1rem;">キャラクターを切り替え</span>
+      <button type="button" onclick="closeCharSwitcher()" style="background:none;border:none;color:#aaa;font-size:1.3rem;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div id="char-switch-cards" class="char-switch-grid"></div>
+  </div>
+</div>
+
+<script src="data.js?v=5"></script>
+<script src="app-core.js?v=5"></script>
+<script src="app-parts.js?v=5"></script>
+<script src="app-skills.js?v=5"></script>
+<script src="app-save.js?v=5"></script>
+<script src="app-share.js?v=5"></script>
+<script src="app-main.js?v=5"></script>
 </body>
 </html>
